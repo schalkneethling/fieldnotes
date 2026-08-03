@@ -27,9 +27,8 @@ The convenience script in `scripts/build-and-launch.sh` targets a developer-spec
 
 Fieldnotes currently has no account system, analytics, advertising SDKs, backend, or other network integration. Notes, photos, emotion signals, and speech-derived text remain on the device. Speech recognition is configured to require on-device recognition.
 
-Camera, photo-library, microphone, and speech-recognition access are requested only when the corresponding feature is used. App Store Connect privacy answers and this statement must be reviewed whenever data handling changes.
+Camera, microphone, and speech-recognition access are requested only after the user explicitly chooses to prepare that capability during onboarding or invokes it later in context. Each onboarding permission can be skipped. Photo selection should use the system picker without requesting broader library access when possible. App Store Connect privacy answers and this statement must be reviewed whenever data handling changes.
 
 ## TestFlight readiness
 
-The release plan and trial acceptance criteria are documented in [docs/testflight-readiness.md](docs/testflight-readiness.md). Work is also tracked as epics and subtasks in GitHub Issues.
-
+The durable planning hub is in [plans/README.md](plans/README.md), with the active [TestFlight self-trial plan](plans/testflight-self-trial.md) and [decision log](plans/decisions.md). Release gates are documented in [docs/testflight-readiness.md](docs/testflight-readiness.md), while individual work and completion state are tracked in GitHub Issues.

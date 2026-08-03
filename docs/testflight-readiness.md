@@ -2,7 +2,7 @@
 
 ## Objective
 
-Ship a stable internal TestFlight build that lets a small tester group validate capture reliability, local persistence, dictation, photo handling, and the usefulness of review cues on real devices.
+Ship a stable internal TestFlight build that lets the project owner validate capture reliability, local persistence, dictation, photo handling, performance, and the usefulness of review cues through daily use on the primary physical trial device.
 
 ## Current assessment
 
@@ -23,15 +23,20 @@ The first internal build is ready when all of the following are true:
 - Notes persist across app termination and installation of a newer build.
 - Users can remove an accidental or unwanted note.
 - Stored photos are resized and normalized to control storage and memory use.
-- Core date-range, reflection-cue, and persistence behavior has automated coverage.
+- Critical capture, retrieval, deletion, relaunch, migration, and recovery behavior has comprehensive automated coverage.
+- Explicit launch, capture, save, retrieval, scrolling, image-processing, dictation, and memory budgets pass on the primary physical trial device with representative data volumes.
+- The first-launch and first-successful-Fieldnote experiences work across permission, accessibility, interruption, and relaunch states.
+- The durability guarantee and its boundaries around app deletion, device loss, export, backup, and restoration are documented.
 - App Store Connect beta metadata, privacy answers, export compliance, support URL, privacy-policy URL, and tester instructions are complete.
 - The build number is unique and the tester-facing changes are recorded.
 
 ## Trial scope
 
-Start with 3–5 internal testers for one week. Ask testers to create notes using typing, dictation, camera capture, and photo-library selection; deny and later grant each permission; force-quit and relaunch the app; review each time range; and report crashes, lost content, confusing interactions, excessive storage, or misleading reflection cues.
+Start with a one-person internal trial for one week on the primary physical trial device. Use the app for ordinary daily capture with typing, dictation, camera capture, and photo selection; exercise skipped, denied, and later granted permissions; force-quit and relaunch; install a newer TestFlight build; review each time range; and report crashes, lost content, ambiguous saves, slow interactions, confusing motion or permissions, excessive storage, or misleading reflection cues.
 
 External testing should follow only after the internal trial has no known data-loss or launch-blocking defects and the Beta App Review information is complete.
+
+The active execution order, design intent, recovered project history, and decision record live in [the checked-in planning hub](../plans/README.md). GitHub Issues remain authoritative for work-item status.
 
 ## Deliberate non-goals for the first trial
 

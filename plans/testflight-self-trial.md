@@ -42,6 +42,8 @@ GitHub issue state is authoritative. The order below expresses dependencies, not
 - [#7: Resize and normalize stored photos](https://github.com/schalkneethling/fieldnotes/issues/7)
 - [#6: Fieldnote deletion with confirmation](https://github.com/schalkneethling/fieldnotes/issues/6)
 
+The active guarantees, failure semantics, and verification matrix are defined in the [data-durability contract](data-durability-contract.md).
+
 Reliability comes before a polished success animation: the app must never imply that a Fieldnote is safe until its text and media are durably persisted.
 
 ### 3. Comprehensive confidence and performance

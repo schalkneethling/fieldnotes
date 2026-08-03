@@ -36,6 +36,8 @@ struct EntryEditorView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedPhotoData: Data?
     @State private var photoLoadError: String?
+    @State private var saveErrorMessage = ""
+    @State private var isShowingSaveError = false
     @State private var isShowingCamera = false
     @State private var dictationBaseText = ""
     @StateObject private var speechTranscriber = SpeechTranscriber()
@@ -80,6 +82,11 @@ struct EntryEditorView: View {
         .fullScreenCover(isPresented: $isShowingCamera) {
             CameraPicker(selectedPhotoData: $selectedPhotoData)
                 .ignoresSafeArea()
+        }
+        .alert("Fieldnote wasn’t saved", isPresented: $isShowingSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage)
         }
     }
 
@@ -240,9 +247,18 @@ struct EntryEditorView: View {
     }
 
     private func save() {
-        let entry = Fieldnote(text: trimmedNote, emoji: selectedEmoji, photoData: selectedPhotoData)
-        modelContext.insert(entry)
-        dismiss()
+        do {
+            try FieldnotePersistence.save(
+                text: trimmedNote,
+                emoji: selectedEmoji,
+                photoData: selectedPhotoData,
+                in: modelContext
+            )
+            dismiss()
+        } catch {
+            saveErrorMessage = "Your draft is still here. Check available storage and try again."
+            isShowingSaveError = true
+        }
     }
 
     private func startDictation() {

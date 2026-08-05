@@ -1,12 +1,5 @@
 import SwiftData
 
-enum FieldnotesSchemaV1: VersionedSchema {
-    // Keep this model identity unchanged while adopting versioning. Before V2,
-    // preserve the V1 model definition rather than editing it in place.
-    static let versionIdentifier = Schema.Version(1, 0, 0)
-    static let models: [any PersistentModel.Type] = [Fieldnote.self]
-}
-
 enum FieldnotesMigrationPlan: SchemaMigrationPlan {
     static let schemas: [any VersionedSchema.Type] = [FieldnotesSchemaV1.self]
     static let stages: [MigrationStage] = []

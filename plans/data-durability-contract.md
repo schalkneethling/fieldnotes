@@ -68,8 +68,8 @@ Before broader testing, decide whether export and restoration are release gates 
 
 - Explicit throwing save and complete-Fieldnote integration tests are implemented in the first reliability slice; failure injection and UI coverage remain.
 - There is no save-operation seam for deterministic failure testing; startup failure injection is now covered separately.
-- The V1 schema is explicitly versioned, and a disk-backed compatibility test proves a store created by the prior unversioned configuration reopens without losing a complete Fieldnote. No V2 migration fixture exists yet because no schema change has shipped.
-- Store initialization now has a testable loading, ready, and recovery path. Injected failures prove that no fallback container is created; controlled invalid-store and physical-device recovery checks remain.
+- The V1 schema and model shape are structurally frozen and pinned by tests. A checked-in disk-backed store created before the refactor proves the versioned factory preserves every Fieldnote field and external photo data. No V2 migration fixture exists yet because no schema change has shipped.
+- Store initialization now has testable idle, opening, ready, timeout-recovery, and error-recovery paths. Injected failures prove that no fallback or overlapping container is created; controlled invalid-store and physical-device recovery checks remain.
 - There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
 - Library media is stored in its original representation and camera media is compressed without resizing.
 - Deletion, export, backup, and restoration are not implemented.

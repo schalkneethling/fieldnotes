@@ -27,6 +27,63 @@ private let emotionOptions: [EmotionOption] = [
     EmotionOption("❓", "Uncertainty")
 ]
 
+struct PhotoSelectionState {
+    private(set) var data: Data?
+    private(set) var errorMessage: String?
+    private(set) var isLoading = false
+    private(set) var loadRequestID: UUID?
+
+    var isReady: Bool {
+        !isLoading && errorMessage == nil && data != nil
+    }
+
+    mutating func beginLibraryLoad() -> UUID {
+        let requestID = UUID()
+        data = nil
+        errorMessage = nil
+        isLoading = true
+        loadRequestID = requestID
+        return requestID
+    }
+
+    mutating func finishLibraryLoad(with data: Data?, requestID: UUID) {
+        guard loadRequestID == requestID else { return }
+
+        isLoading = false
+        guard let data else {
+            errorMessage = "The selected image could not be loaded."
+            return
+        }
+
+        self.data = data
+    }
+
+    mutating func failLibraryLoad(requestID: UUID) {
+        guard loadRequestID == requestID else { return }
+        data = nil
+        isLoading = false
+        errorMessage = "The selected image could not be loaded."
+    }
+
+    mutating func cancelLibraryLoad() {
+        loadRequestID = nil
+        isLoading = false
+        errorMessage = nil
+    }
+
+    mutating func selectCameraPhoto(_ data: Data) {
+        loadRequestID = nil
+        isLoading = false
+        errorMessage = nil
+        self.data = data
+    }
+
+    mutating func clear() {
+        cancelLibraryLoad()
+        data = nil
+    }
+}
+
 struct EntryEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -34,8 +91,9 @@ struct EntryEditorView: View {
     @State private var noteText = ""
     @State private var selectedEmoji: String?
     @State private var selectedPhotoItem: PhotosPickerItem?
-    @State private var selectedPhotoData: Data?
-    @State private var photoLoadError: String?
+    @State private var photoSelection = PhotoSelectionState()
+    @State private var saveErrorMessage = ""
+    @State private var isShowingSaveError = false
     @State private var isShowingCamera = false
     @State private var dictationBaseText = ""
     @StateObject private var speechTranscriber = SpeechTranscriber()
@@ -47,7 +105,12 @@ struct EntryEditorView: View {
     }
 
     private var canSave: Bool {
-        !trimmedNote.isEmpty
+        !trimmedNote.isEmpty && isSelectedPhotoReady
+    }
+
+    private var isSelectedPhotoReady: Bool {
+        guard selectedPhotoItem != nil else { return true }
+        return photoSelection.isReady
     }
 
     var body: some View {
@@ -78,8 +141,13 @@ struct EntryEditorView: View {
             loadPhoto(from: newItem)
         }
         .fullScreenCover(isPresented: $isShowingCamera) {
-            CameraPicker(selectedPhotoData: $selectedPhotoData)
+            CameraPicker(onCapture: acceptCapturedPhoto)
                 .ignoresSafeArea()
+        }
+        .alert("Fieldnote wasn’t saved", isPresented: $isShowingSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage)
         }
     }
 
@@ -152,9 +220,9 @@ struct EntryEditorView: View {
         Section {
             photoPicker
         } header: {
-            Label(selectedPhotoData == nil ? "Photo" : "Photo attached", systemImage: selectedPhotoData == nil ? "camera" : "checkmark.circle")
+            Label(photoSelection.data == nil ? "Photo" : "Photo attached", systemImage: photoSelection.data == nil ? "camera" : "checkmark.circle")
         } footer: {
-            if selectedPhotoData == nil {
+            if photoSelection.data == nil {
                 Text("Optional. One image keeps the note light.")
             }
         }
@@ -191,7 +259,7 @@ struct EntryEditorView: View {
                 .buttonStyle(.bordered)
             }
 
-            if let selectedPhotoData, let image = UIImage(data: selectedPhotoData) {
+            if let selectedPhotoData = photoSelection.data, let image = UIImage(data: selectedPhotoData) {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -200,8 +268,7 @@ struct EntryEditorView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay(alignment: .topTrailing) {
                         Button {
-                            self.selectedPhotoData = nil
-                            selectedPhotoItem = nil
+                            clearSelectedPhoto()
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
@@ -213,36 +280,67 @@ struct EntryEditorView: View {
                     }
             }
 
-            if let photoLoadError {
+            if photoSelection.isLoading {
+                ProgressView("Preparing photo…")
+                    .font(.footnote)
+            }
+
+            if let photoLoadError = photoSelection.errorMessage {
                 Text(photoLoadError)
                     .font(.footnote)
                     .foregroundStyle(.red)
+
+                Button("Remove photo", role: .destructive) {
+                    clearSelectedPhoto()
+                }
             }
         }
     }
 
     private func loadPhoto(from item: PhotosPickerItem?) {
-        photoLoadError = nil
-
         guard let item else {
-            selectedPhotoData = nil
+            photoSelection.cancelLibraryLoad()
             return
         }
 
+        let requestID = photoSelection.beginLibraryLoad()
+
         Task {
             do {
-                selectedPhotoData = try await item.loadTransferable(type: Data.self)
+                let data = try await item.loadTransferable(type: Data.self)
+                photoSelection.finishLibraryLoad(with: data, requestID: requestID)
             } catch {
-                selectedPhotoData = nil
-                photoLoadError = "The selected image could not be loaded."
+                photoSelection.failLibraryLoad(requestID: requestID)
             }
         }
     }
 
+    private func acceptCapturedPhoto(_ data: Data) {
+        photoSelection.cancelLibraryLoad()
+        selectedPhotoItem = nil
+        photoSelection.selectCameraPhoto(data)
+    }
+
+    private func clearSelectedPhoto() {
+        photoSelection.clear()
+        selectedPhotoItem = nil
+    }
+
     private func save() {
-        let entry = Fieldnote(text: trimmedNote, emoji: selectedEmoji, photoData: selectedPhotoData)
-        modelContext.insert(entry)
-        dismiss()
+        guard canSave else { return }
+
+        do {
+            try FieldnotePersistence.save(
+                text: trimmedNote,
+                emoji: selectedEmoji,
+                photoData: photoSelection.data,
+                in: modelContext
+            )
+            dismiss()
+        } catch {
+            saveErrorMessage = "Your draft is still here. Check available storage and try again."
+            isShowingSaveError = true
+        }
     }
 
     private func startDictation() {
@@ -469,7 +567,7 @@ struct EmotionPicker: View {
 
 struct CameraPicker: UIViewControllerRepresentable {
     @Environment(\.dismiss) private var dismiss
-    @Binding var selectedPhotoData: Data?
+    let onCapture: (Data) -> Void
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let controller = UIImagePickerController()
@@ -482,21 +580,22 @@ struct CameraPicker: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(selectedPhotoData: $selectedPhotoData, dismiss: dismiss)
+        Coordinator(onCapture: onCapture, dismiss: dismiss)
     }
 
     final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
-        @Binding private var selectedPhotoData: Data?
+        private let onCapture: (Data) -> Void
         private let dismiss: DismissAction
 
-        init(selectedPhotoData: Binding<Data?>, dismiss: DismissAction) {
-            _selectedPhotoData = selectedPhotoData
+        init(onCapture: @escaping (Data) -> Void, dismiss: DismissAction) {
+            self.onCapture = onCapture
             self.dismiss = dismiss
         }
 
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                selectedPhotoData = image.jpegData(compressionQuality: 0.86)
+            if let image = info[.originalImage] as? UIImage,
+               let data = image.jpegData(compressionQuality: 0.86) {
+                onCapture(data)
             }
 
             dismiss()

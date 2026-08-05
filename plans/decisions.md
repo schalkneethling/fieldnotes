@@ -58,3 +58,11 @@ Statuses:
 - **Question:** Must the first trial support export and restoration, or is an explicit limitation acceptable until a later build?
 - **Reason:** Local SwiftData persistence can protect ordinary saves and upgrades but cannot by itself recover data after device loss or app deletion.
 - **Tracking:** GitHub issue #21.
+
+## D-008 — Require pull requests for changes to main
+
+- **Date:** 2026-08-03
+- **Status:** Accepted
+- **Decision:** All work, including administrator changes, must reach `main` through a pull request from a `codex/` branch.
+- **Enforcement:** GitHub branch protection requires a pull request, applies to administrators, requires zero approvals for solo maintenance, and disables force-pushes and branch deletion.
+- **Reason:** Directly publishing the initial planning commit bypassed review and left no branch diff. The repository and `AGENTS.md` now make the intended workflow explicit.

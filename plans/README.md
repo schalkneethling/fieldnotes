@@ -17,6 +17,7 @@ This directory is the durable project-planning home for Fieldnotes. It exists so
 4. Keep issue completion in GitHub instead of duplicating checkbox state in multiple Markdown files.
 5. Include plan and decision updates in the same change as the implementation when practical.
 6. End substantial work with a short handoff note in the relevant issue: what changed, what was verified, and what remains.
+7. Never commit or push directly to `main`; use a `codex/` branch and merge through a pull request. GitHub branch protection enforces this for administrators as well as contributors.
 
 ## Starting a new Codex task
 
@@ -25,6 +26,7 @@ Ask the task to read, in order:
 1. `plans/README.md`
 2. `plans/testflight-self-trial.md`
 3. `plans/decisions.md`
-4. The GitHub issue being worked on
+4. `plans/data-durability-contract.md` for persistence, media, migration, recovery, or performance work
+5. The GitHub issue being worked on
 
 That is the minimum context needed to resume without relying on chat history.

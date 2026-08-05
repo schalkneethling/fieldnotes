@@ -36,6 +36,8 @@ struct EntryEditorView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedPhotoData: Data?
     @State private var photoLoadError: String?
+    @State private var isPhotoLoading = false
+    @State private var photoLoadRequestID: UUID?
     @State private var saveErrorMessage = ""
     @State private var isShowingSaveError = false
     @State private var isShowingCamera = false
@@ -49,7 +51,12 @@ struct EntryEditorView: View {
     }
 
     private var canSave: Bool {
-        !trimmedNote.isEmpty
+        !trimmedNote.isEmpty && isSelectedPhotoReady
+    }
+
+    private var isSelectedPhotoReady: Bool {
+        guard selectedPhotoItem != nil else { return true }
+        return !isPhotoLoading && photoLoadError == nil && selectedPhotoData != nil
     }
 
     var body: some View {
@@ -207,8 +214,7 @@ struct EntryEditorView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay(alignment: .topTrailing) {
                         Button {
-                            self.selectedPhotoData = nil
-                            selectedPhotoItem = nil
+                            clearSelectedPhoto()
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
@@ -220,33 +226,70 @@ struct EntryEditorView: View {
                     }
             }
 
+            if isPhotoLoading {
+                ProgressView("Preparing photo…")
+                    .font(.footnote)
+            }
+
             if let photoLoadError {
                 Text(photoLoadError)
                     .font(.footnote)
                     .foregroundStyle(.red)
+
+                Button("Remove photo", role: .destructive) {
+                    clearSelectedPhoto()
+                }
             }
         }
     }
 
     private func loadPhoto(from item: PhotosPickerItem?) {
         photoLoadError = nil
+        selectedPhotoData = nil
 
         guard let item else {
-            selectedPhotoData = nil
+            photoLoadRequestID = nil
+            isPhotoLoading = false
             return
         }
 
+        let requestID = UUID()
+        photoLoadRequestID = requestID
+        isPhotoLoading = true
+
         Task {
             do {
-                selectedPhotoData = try await item.loadTransferable(type: Data.self)
+                let data = try await item.loadTransferable(type: Data.self)
+                guard photoLoadRequestID == requestID else { return }
+
+                guard let data else {
+                    isPhotoLoading = false
+                    photoLoadError = "The selected image could not be loaded."
+                    return
+                }
+
+                selectedPhotoData = data
+                isPhotoLoading = false
             } catch {
+                guard photoLoadRequestID == requestID else { return }
                 selectedPhotoData = nil
+                isPhotoLoading = false
                 photoLoadError = "The selected image could not be loaded."
             }
         }
     }
 
+    private func clearSelectedPhoto() {
+        photoLoadRequestID = nil
+        isPhotoLoading = false
+        photoLoadError = nil
+        selectedPhotoData = nil
+        selectedPhotoItem = nil
+    }
+
     private func save() {
+        guard canSave else { return }
+
         do {
             try FieldnotePersistence.save(
                 text: trimmedNote,

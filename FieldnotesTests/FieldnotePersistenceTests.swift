@@ -53,6 +53,30 @@ final class FieldnotePersistenceTests: XCTestCase {
         XCTAssertEqual(Set(fetched.map(\.text)), ["First", "Second"])
         XCTAssertEqual(Set(fetched.map(\.id)).count, 2)
     }
+
+    func testCameraCaptureSupersedesPendingLibraryPhotoBeforeSave() throws {
+        let libraryPhotoData = Data("library".utf8)
+        let cameraPhotoData = Data("camera".utf8)
+        var photoSelection = PhotoSelectionState()
+
+        let pendingLibraryRequest = photoSelection.beginLibraryLoad()
+        photoSelection.cancelLibraryLoad()
+        photoSelection.selectCameraPhoto(cameraPhotoData)
+        photoSelection.finishLibraryLoad(with: libraryPhotoData, requestID: pendingLibraryRequest)
+
+        XCTAssertEqual(photoSelection.data, cameraPhotoData)
+
+        try FieldnotePersistence.save(
+            text: "Camera won the race.",
+            emoji: nil,
+            photoData: photoSelection.data,
+            in: container.mainContext
+        )
+
+        let verificationContext = ModelContext(container)
+        let fetched = try XCTUnwrap(verificationContext.fetch(FetchDescriptor<Fieldnote>()).only)
+        XCTAssertEqual(fetched.photoData, cameraPhotoData)
+    }
 }
 
 private extension Collection {

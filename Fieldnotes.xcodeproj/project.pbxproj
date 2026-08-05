@@ -17,6 +17,9 @@
 		8A3D4E5F6A7B8C9000000008 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A3D4E5F6A7B8C9000000018 /* SettingsView.swift */; };
 		9B3D4E5F6A7B8C9000000001 /* FieldnotePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B3D4E5F6A7B8C9000000011 /* FieldnotePersistence.swift */; };
 		9C3D4E5F6A7B8C9000000001 /* FieldnotePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3D4E5F6A7B8C9000000011 /* FieldnotePersistenceTests.swift */; };
+		9D3D4E5F6A7B8C9000000001 /* FieldnotesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3D4E5F6A7B8C9000000011 /* FieldnotesStore.swift */; };
+		9D3D4E5F6A7B8C9000000002 /* StoreStartupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3D4E5F6A7B8C9000000012 /* StoreStartupView.swift */; };
+		9D3D4E5F6A7B8C9000000003 /* FieldnotesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +45,9 @@
 		9B3D4E5F6A7B8C9000000011 /* FieldnotePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotePersistence.swift; sourceTree = "<group>"; };
 		9C3D4E5F6A7B8C9000000010 /* FieldnotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FieldnotesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C3D4E5F6A7B8C9000000011 /* FieldnotePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotePersistenceTests.swift; sourceTree = "<group>"; };
+		9D3D4E5F6A7B8C9000000011 /* FieldnotesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesStore.swift; sourceTree = "<group>"; };
+		9D3D4E5F6A7B8C9000000012 /* StoreStartupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreStartupView.swift; sourceTree = "<group>"; };
+		9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				8A3D4E5F6A7B8C9000000011 /* FieldnotesApp.swift */,
+				9D3D4E5F6A7B8C9000000012 /* StoreStartupView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -115,6 +122,7 @@
 			children = (
 				8A3D4E5F6A7B8C9000000013 /* DesignSystem.swift */,
 				9B3D4E5F6A7B8C9000000011 /* FieldnotePersistence.swift */,
+				9D3D4E5F6A7B8C9000000011 /* FieldnotesStore.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -132,6 +140,7 @@
 			isa = PBXGroup;
 			children = (
 				9C3D4E5F6A7B8C9000000011 /* FieldnotePersistenceTests.swift */,
+				9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */,
 			);
 			path = FieldnotesTests;
 			sourceTree = "<group>";
@@ -244,6 +253,8 @@
 				8A3D4E5F6A7B8C9000000007 /* ReflectionCuePanel.swift in Sources */,
 				8A3D4E5F6A7B8C9000000008 /* SettingsView.swift in Sources */,
 				9B3D4E5F6A7B8C9000000001 /* FieldnotePersistence.swift in Sources */,
+				9D3D4E5F6A7B8C9000000001 /* FieldnotesStore.swift in Sources */,
+				9D3D4E5F6A7B8C9000000002 /* StoreStartupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -252,6 +263,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9C3D4E5F6A7B8C9000000001 /* FieldnotePersistenceTests.swift in Sources */,
+				9D3D4E5F6A7B8C9000000003 /* FieldnotesStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

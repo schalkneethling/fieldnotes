@@ -1,12 +1,12 @@
-import SwiftData
 import SwiftUI
 
 @main
 struct FieldnotesApp: App {
+    @StateObject private var storeStartup = StoreStartup()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            StoreStartupView(startup: storeStartup)
         }
-        .modelContainer(for: Fieldnote.self)
     }
 }

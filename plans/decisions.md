@@ -44,12 +44,12 @@ Statuses:
 - **Decision:** Go beyond a minimal smoke suite. Cover critical flows, real-store persistence, migrations, retrieval, failure recovery, UI behavior, regressions, and measurable device performance.
 - **Consequence:** The primary physical trial device is the first performance baseline, including representative collections of 100, 1,000, and 5,000 Fieldnotes.
 
-## D-006 — Keep iOS 26.0 as the provisional self-trial floor
+## D-006 — Keep iOS 26.0 as the self-trial floor
 
 - **Date:** 2026-08-03
-- **Status:** Provisional
+- **Status:** Accepted
 - **Decision:** Do not lower the deployment target solely for the one-person trial because the current target supports the trial device.
-- **Follow-up:** Decide and validate the eventual public minimum independently in GitHub issue #1.
+- **Consequence:** Project and test targets remain on iOS 26.0 for the internal trial. Decide and validate the eventual public minimum separately before broader distribution.
 
 ## D-007 — Define the durability boundary for device loss and app deletion
 
@@ -66,3 +66,12 @@ Statuses:
 - **Decision:** All work, including administrator changes, must reach `main` through a pull request from a `codex/` branch.
 - **Enforcement:** GitHub branch protection requires a pull request, applies to administrators, requires zero approvals for solo maintenance, and disables force-pushes and branch deletion.
 - **Reason:** Directly publishing the initial planning commit bypassed review and left no branch diff. The repository and `AGENTS.md` now make the intended workflow explicit.
+
+## D-009 — Never replace a failed persistent store implicitly
+
+- **Date:** 2026-08-05
+- **Status:** Accepted
+- **Decision:** Create the SwiftData container through an explicit versioned-schema factory and present loading, ready, or recovery states at launch. If the store cannot open, retain the original store and block capture rather than creating an empty or in-memory fallback.
+- **Recovery behavior:** Permit retry against the same store and expose sanitized diagnostics containing only app/build versions, OS version, error domain/code, and a support reference. Do not expose raw error messages, store paths, device identifiers, or Fieldnote content.
+- **Schema constraint:** V1 references the existing top-level `Fieldnote` model to preserve its shipped identity during versioning adoption. Do not edit that model in place for V2; first preserve the V1 definition and prove the transition with a previous-version fixture.
+- **Reason:** An unexplained crash is unusable, while a silent replacement store could make existing Fieldnotes appear lost and allow new captures into the wrong durability context.

@@ -1,7 +1,7 @@
 # TestFlight self-trial plan
 
 - **Status:** Active
-- **Last updated:** 2026-08-03
+- **Last updated:** 2026-08-05
 - **Trial owner and tester:** Project owner
 - **Trial device:** Primary physical trial device
 - **Repository baseline:** `0645be8` (`Initial Fieldnotes project`)
@@ -91,7 +91,7 @@ Record crashes, content loss, failed or ambiguous saves, slow interactions, exce
 
 ## Known boundaries and open questions
 
-- The current deployment target supports the self-trial device. The eventual public minimum remains a separate compatibility decision.
+- iOS 26.0 is the accepted self-trial floor. The eventual public minimum remains a separate compatibility decision.
 - Local persistence cannot protect against device loss or app deletion. The required export, backup, and restoration boundary is an open durability decision tracked in issue #21.
 - Accounts, cross-device sync, analytics, advertising, broad localization, and public App Store release remain outside this self-trial unless a recorded decision changes scope.
 

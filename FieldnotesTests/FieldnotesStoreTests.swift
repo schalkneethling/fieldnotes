@@ -35,7 +35,7 @@ final class FieldnotesStoreTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(attributes["emoji"]).isOptional)
         XCTAssertTrue(photo.isOptional)
         XCTAssertTrue(id.isUnique)
-        XCTAssertTrue(photo.debugDescription.contains("options: [externalStorage]"))
+        XCTAssertTrue(photo.options.contains(.externalStorage))
         XCTAssertTrue(entity.relationships.isEmpty)
     }
 
@@ -277,6 +277,7 @@ final class FieldnotesStoreTests: XCTestCase {
 
     func testStaleTimeoutCannotReplaceReadyState() async throws {
         let timeout = TimeoutTrigger()
+        let timeoutHandled = expectation(description: "Timeout handler completed")
         let container = try FieldnotesStoreFactory.makeContainer(
             configuration: ModelConfiguration(
                 schema: FieldnotesStoreFactory.schema,
@@ -285,19 +286,24 @@ final class FieldnotesStoreTests: XCTestCase {
         )
         let startup = StoreStartup(
             loadContainer: { container },
-            waitForTimeout: { await timeout.wait() }
+            waitForTimeout: {
+                await timeout.wait()
+                timeoutHandled.fulfill()
+            }
         )
 
         startup.start()
         try await waitUntil { startup.state.isReady }
         timeout.fire()
-        try await Task.sleep(for: .milliseconds(50))
+        await fulfillment(of: [timeoutHandled], timeout: 2)
 
         XCTAssertTrue(startup.state.isReady)
     }
 
     private func waitUntil(
         timeout: Duration = .seconds(2),
+        file: StaticString = #filePath,
+        line: UInt = #line,
         condition: () -> Bool
     ) async throws {
         let clock = ContinuousClock()
@@ -305,7 +311,7 @@ final class FieldnotesStoreTests: XCTestCase {
 
         while !condition() {
             guard clock.now < deadline else {
-                XCTFail("Timed out waiting for startup state")
+                XCTFail("Timed out waiting for startup state", file: file, line: line)
                 throw TestWaitError.timedOut
             }
             try await Task.sleep(for: .milliseconds(10))

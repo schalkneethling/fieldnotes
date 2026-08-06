@@ -1,7 +1,7 @@
 # Fieldnotes data-durability contract
 
 - **Status:** Active draft for the first internal trial
-- **Last updated:** 2026-08-03
+- **Last updated:** 2026-08-05
 - **Tracking:** [GitHub issue #21](https://github.com/schalkneethling/fieldnotes/issues/21)
 
 ## Purpose
@@ -67,10 +67,10 @@ Before broader testing, decide whether export and restoration are release gates 
 ## Current gaps
 
 - Explicit throwing save and complete-Fieldnote integration tests are implemented in the first reliability slice; failure injection and UI coverage remain.
-- There is no persistence seam for deterministic failure testing.
-- There is now a unit-test target, but no migration fixture or comprehensive critical-flow suite yet.
-- The schema is not explicitly versioned.
-- Store initialization has no recovery experience.
+- There is no save-operation seam for deterministic failure testing; startup failure injection is now covered separately.
+- The V1 schema and model shape are structurally frozen and pinned by tests. A checked-in disk-backed store created before the refactor proves the versioned factory preserves every Fieldnote field and external photo data. No V2 migration fixture exists yet because no schema change has shipped.
+- Store initialization now has testable idle, opening, ready, timeout-recovery, and error-recovery paths. Injected failures prove that no fallback or overlapping container is created; controlled invalid-store and physical-device recovery checks remain.
+- There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
 - Library media is stored in its original representation and camera media is compressed without resizing.
 - Deletion, export, backup, and restoration are not implemented.
 - Review fetches the full collection and filters time ranges in memory.

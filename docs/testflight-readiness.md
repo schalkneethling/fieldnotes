@@ -8,14 +8,14 @@ Ship a stable internal TestFlight build that lets the project owner validate cap
 
 The core product loop is implemented: capture a short note, optionally attach a feeling and photo, persist it locally, and review notes by time range. The project has a shared scheme, bundle identifier, marketing version, build number, and automatic-signing configuration.
 
-The first TestFlight upload is blocked by missing release assets, an unproven signed archive, lack of automated tests, and incomplete release operations. The deployment target is iOS 26.0, which must be confirmed against the intended tester devices.
+The first TestFlight upload is blocked by missing release assets, an unproven signed archive, incomplete critical-flow coverage, and incomplete release operations. The self-trial deployment target is confirmed as iOS 26.0; the eventual public minimum remains a separate decision.
 
 ## Release gates
 
 The first internal build is ready when all of the following are true:
 
 - The app has a production app icon and accent-color asset.
-- The minimum iOS version is an explicit product decision.
+- The minimum iOS version is an explicit product decision for the intended distribution scope.
 - A Release archive succeeds with the intended Apple Developer team.
 - Xcode Organizer validation succeeds without blocking errors.
 - Core capture and review behavior passes on at least one physical iPhone.

@@ -54,10 +54,13 @@ Statuses:
 ## D-007 — Define the durability boundary for device loss and app deletion
 
 - **Date:** 2026-08-03
-- **Status:** Open
-- **Question:** Must the first trial support export and restoration, or is an explicit limitation acceptable until a later build?
-- **Reason:** Local SwiftData persistence can protect ordinary saves and upgrades but cannot by itself recover data after device loss or app deletion.
-- **Tracking:** GitHub issue #21.
+- **Decided:** 2026-08-06
+- **Status:** Accepted
+- **Decision:** Manual export and restoration are release gates for the first internal trial. Export a versioned JSON archive containing every Fieldnote field and attached photo. Restore additively: missing identifiers are inserted, identical identifiers are treated as already present, and a differing Fieldnote with the same identifier rejects the entire restore. Restoration never overwrites or deletes local Fieldnotes.
+- **Safety boundary:** Validate the complete archive before mutation, restore with one explicit save in a dedicated non-autosaving context, and roll back on failure. Reject non-regular, unsupported, malformed, conflicting, or oversized archives without changing the store. The first format is capped at 256 MiB and uses one opened file descriptor for bounded pre-read and post-read checks. New captures and restores enforce the same version 1 limits so a successful write cannot make the store unexportable.
+- **Privacy and backup boundary:** Archives are portable but are not encrypted by Fieldnotes. The owner chooses a private destination and must export again to capture later changes. Fieldnotes does not yet provide automatic backup, cloud synchronization, accounts, background exports, or recovery without an accessible archive.
+- **Reason:** A one-person trial still creates meaningful personal data. A deliberate portable copy makes app deletion and device replacement recoverable without expanding the trial into an account or sync system.
+- **Tracking:** GitHub issues #21 and #24.
 
 ## D-008 — Require pull requests for changes to main
 

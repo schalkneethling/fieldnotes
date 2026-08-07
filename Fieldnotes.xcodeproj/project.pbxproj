@@ -21,6 +21,8 @@
 		9D3D4E5F6A7B8C9000000002 /* StoreStartupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3D4E5F6A7B8C9000000012 /* StoreStartupView.swift */; };
 		9D3D4E5F6A7B8C9000000003 /* FieldnotesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */; };
 		9E3D4E5F6A7B8C9000000001 /* PreVersioningStore in Resources */ = {isa = PBXBuildFile; fileRef = 9E3D4E5F6A7B8C9000000011 /* PreVersioningStore */; };
+		9F3D4E5F6A7B8C9000000001 /* FieldnotesArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */; };
+		A03D4E5F6A7B8C9000000001 /* FieldnotesArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +52,8 @@
 		9D3D4E5F6A7B8C9000000012 /* StoreStartupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreStartupView.swift; sourceTree = "<group>"; };
 		9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesStoreTests.swift; sourceTree = "<group>"; };
 		9E3D4E5F6A7B8C9000000011 /* PreVersioningStore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fixtures/PreVersioningStore; sourceTree = "<group>"; };
+		9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesArchive.swift; sourceTree = "<group>"; };
+		A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesArchiveTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				8A3D4E5F6A7B8C9000000013 /* DesignSystem.swift */,
+				9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */,
 				9B3D4E5F6A7B8C9000000011 /* FieldnotePersistence.swift */,
 				9D3D4E5F6A7B8C9000000011 /* FieldnotesStore.swift */,
 			);
@@ -142,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				9C3D4E5F6A7B8C9000000011 /* FieldnotePersistenceTests.swift */,
+				A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */,
 				9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */,
 				9E3D4E5F6A7B8C9000000011 /* PreVersioningStore */,
 			);
@@ -257,6 +263,7 @@
 				8A3D4E5F6A7B8C9000000007 /* ReflectionCuePanel.swift in Sources */,
 				8A3D4E5F6A7B8C9000000008 /* SettingsView.swift in Sources */,
 				9B3D4E5F6A7B8C9000000001 /* FieldnotePersistence.swift in Sources */,
+				9F3D4E5F6A7B8C9000000001 /* FieldnotesArchive.swift in Sources */,
 				9D3D4E5F6A7B8C9000000001 /* FieldnotesStore.swift in Sources */,
 				9D3D4E5F6A7B8C9000000002 /* StoreStartupView.swift in Sources */,
 			);
@@ -267,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9C3D4E5F6A7B8C9000000001 /* FieldnotePersistenceTests.swift in Sources */,
+				A03D4E5F6A7B8C9000000001 /* FieldnotesArchiveTests.swift in Sources */,
 				9D3D4E5F6A7B8C9000000003 /* FieldnotesStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

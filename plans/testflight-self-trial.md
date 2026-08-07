@@ -1,7 +1,7 @@
 # TestFlight self-trial plan
 
 - **Status:** Active
-- **Last updated:** 2026-08-05
+- **Last updated:** 2026-08-06
 - **Trial owner and tester:** Project owner
 - **Trial device:** Primary physical trial device
 - **Repository baseline:** `0645be8` (`Initial Fieldnotes project`)
@@ -38,6 +38,7 @@ GitHub issue state is authoritative. The order below expresses dependencies, not
 
 - [Epic #14: Quality, persistence, and device verification](https://github.com/schalkneethling/fieldnotes/issues/14)
 - [#21: Define and verify the Fieldnotes data-durability contract](https://github.com/schalkneethling/fieldnotes/issues/21)
+- [#24: Add portable Fieldnotes export and restore](https://github.com/schalkneethling/fieldnotes/issues/24)
 - [#5: Recoverable persistent-store startup handling](https://github.com/schalkneethling/fieldnotes/issues/5)
 - [#7: Resize and normalize stored photos](https://github.com/schalkneethling/fieldnotes/issues/7)
 - [#6: Fieldnote deletion with confirmation](https://github.com/schalkneethling/fieldnotes/issues/6)
@@ -92,7 +93,7 @@ Record crashes, content loss, failed or ambiguous saves, slow interactions, exce
 ## Known boundaries and open questions
 
 - iOS 26.0 is the accepted self-trial floor. The eventual public minimum remains a separate compatibility decision.
-- Local persistence cannot protect against device loss or app deletion. The required export, backup, and restoration boundary is an open durability decision tracked in issue #21.
+- Recovery after device loss or app deletion depends on the owner having manually exported a recent Fieldnotes archive and retained access to it. Fieldnotes does not yet create automatic backups or synchronize devices.
 - Accounts, cross-device sync, analytics, advertising, broad localization, and public App Store release remain outside this self-trial unless a recorded decision changes scope.
 
 ## Recovered history

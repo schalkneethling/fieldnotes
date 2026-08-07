@@ -1,7 +1,7 @@
 # Fieldnotes data-durability contract
 
 - **Status:** Active draft for the first internal trial
-- **Last updated:** 2026-08-05
+- **Last updated:** 2026-08-06
 - **Tracking:** [GitHub issue #21](https://github.com/schalkneethling/fieldnotes/issues/21)
 
 ## Purpose
@@ -20,12 +20,13 @@ For the first internal trial, Fieldnotes must guarantee that:
 6. Deletion requires explicit confirmation and is considered complete only after its persistence succeeds.
 7. A store-open or migration failure never silently replaces or deletes the existing store.
 8. Schema changes ship with a versioned schema, an explicit migration path, and a test fixture created by the previous released schema.
+9. A manually exported archive contains every Fieldnote field and attached photo, and can restore missing Fieldnotes after app deletion or onto a replacement device without overwriting existing data.
 
 ## Explicit boundaries
 
-The first internal build does not yet promise recovery after deleting the app, losing the device, or losing access to the device. Local SwiftData persistence alone cannot satisfy those scenarios.
+Recovery after deleting the app, losing the device, or losing access to the device requires a recent manually exported archive that remains accessible. Fieldnotes cannot recover changes made after the last export and cannot recover anything if both the device and archive are unavailable.
 
-Before broader testing, decide whether export and restoration are release gates or documented limitations. Until that decision is implemented, Fieldnotes must not describe local-only storage as a backup.
+Fieldnotes does not create automatic or cloud backups, synchronize devices, schedule exports, or encrypt archives. The JSON archive contains private text, feelings, timestamps, identifiers, and base64-encoded photo data. The owner is responsible for choosing a private storage destination. The [versioned archive format and limits](../docs/fieldnotes-archive-format.md) are documented independently of SwiftData.
 
 ## Failure behavior
 
@@ -51,6 +52,16 @@ Before broader testing, decide whether export and restoration are release gates 
 - Never attach the original unbounded media as a fallback.
 - Require the user to remove or replace failed media before saving.
 
+### Archive restore failure
+
+- Open the selected URL without following symlinks, verify that descriptor refers to a regular file, and reject an archive over 256 MiB before reading it.
+- Read at most 256 MiB plus one byte from that same descriptor, then repeat the byte limit and expected-size checks afterward.
+- Validate the format, version, counts, finite timestamps, unique identifiers, text limits, and photo limits before changing SwiftData.
+- Treat an identical identifier and identical content as already restored.
+- Reject the entire archive if an identifier matches a different local Fieldnote.
+- Enforce the same archive limits when capturing and restoring Fieldnotes, keeping every successful store state exportable.
+- Insert all missing Fieldnotes in a dedicated non-autosaving context and call one explicit save. Roll back every insertion if that save fails.
+
 ## Verification matrix
 
 | Claim | Automated verification | Physical-device verification |
@@ -62,6 +73,7 @@ Before broader testing, decide whether export and restoration are release gates 
 | Atomic text and media | Integration tests for success and processing failure | Save and retrieve normalized camera and picker media |
 | Confirmed durable deletion | Integration and UI tests | Delete, force-quit, and verify absence after relaunch |
 | Store-open failure safety | Container factory failure test | Validate recovery UI with a controlled invalid store copy |
+| Manual export and restoration | Deterministic codec, bounded-read, exact round-trip, idempotency, conflict, and rollback tests | Export to Files, remove/reinstall, restore, relaunch, and compare text and media |
 | Scale and responsiveness | Performance tests at representative collection sizes | Instruments run on the primary trial device |
 
 ## Current gaps
@@ -72,7 +84,7 @@ Before broader testing, decide whether export and restoration are release gates 
 - Store initialization now has testable idle, opening, ready, timeout-recovery, and error-recovery paths. Injected failures prove that no fallback or overlapping container is created; controlled invalid-store and physical-device recovery checks remain.
 - There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
 - Library media is stored in its original representation and camera media is compressed without resizing.
-- Deletion, export, backup, and restoration are not implemented.
+- Manual JSON export and additive restoration are implemented with a 256 MiB cap. Physical-device recovery and representative-library performance remain to be verified. Automatic backup and synchronization remain out of scope.
 - Review fetches the full collection and filters time ranges in memory.
 - Image decoding occurs from view rendering and has no explicit memory budget.
 

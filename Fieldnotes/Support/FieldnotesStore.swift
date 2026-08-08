@@ -12,6 +12,9 @@ enum FieldnotesMigrationPlan: SchemaMigrationPlan {
             willMigrate: nil,
             didMigrate: { context in
                 try FieldnotesArchiveUsageRepository.reconcile(in: context)
+                if context.hasChanges {
+                    try context.save()
+                }
             }
         )
     ]
@@ -30,7 +33,12 @@ enum FieldnotesStoreFactory {
             migrationPlan: FieldnotesMigrationPlan.self,
             configurations: [configuration ?? defaultConfiguration]
         )
-        try FieldnotesArchiveUsageRepository.ensurePresent(in: ModelContext(container))
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        try FieldnotesArchiveUsageRepository.ensurePresent(in: context)
+        if context.hasChanges {
+            try context.save()
+        }
         return container
     }
 }

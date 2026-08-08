@@ -433,7 +433,6 @@ protocol FieldnotesArchiveUsageAccess {
     func fetchFieldnoteCount() throws -> Int
     func enumerateFieldnotes(_ body: (Fieldnote) throws -> Void) throws
     func insertUsageModel(_ model: FieldnotesArchiveUsageModel)
-    func save() throws
 }
 
 struct SwiftDataFieldnotesArchiveUsageAccess: FieldnotesArchiveUsageAccess {
@@ -466,10 +465,6 @@ struct SwiftDataFieldnotesArchiveUsageAccess: FieldnotesArchiveUsageAccess {
     func insertUsageModel(_ model: FieldnotesArchiveUsageModel) {
         context.insert(model)
     }
-
-    func save() throws {
-        try context.save()
-    }
 }
 
 enum FieldnotesArchiveUsageRepository {
@@ -490,7 +485,6 @@ enum FieldnotesArchiveUsageRepository {
                     estimatedArchiveBytes: usage.estimatedArchiveBytes
                 )
             )
-            try access.save()
             return
         }
         try reconcile(using: access)
@@ -563,7 +557,6 @@ enum FieldnotesArchiveUsageRepository {
                 )
             )
         }
-        try access.save()
     }
 
     private static func requiredModel(
@@ -655,8 +648,18 @@ actor FieldnotesArchiveStore {
         existingCount: Int,
         updatedUsage: FieldnotesArchiveUsage
     ) {
-        // ast-grep-ignore: unbounded-fetch-descriptor -- restore compares archive IDs against the complete local collection deliberately.
-        let existing = try modelContext.fetch(FetchDescriptor<Fieldnote>())
+        let archiveIDs = archive.fieldnotes.map(\.id)
+        var descriptor = FetchDescriptor<Fieldnote>(
+            predicate: #Predicate { archiveIDs.contains($0.id) }
+        )
+        descriptor.propertiesToFetch = [
+            \Fieldnote.id,
+            \Fieldnote.createdAt,
+            \Fieldnote.text,
+            \Fieldnote.emoji
+        ]
+        // External photo data is faulted only when matches compares an archive-referenced record.
+        let existing = try modelContext.fetch(descriptor)
         var existingByID: [UUID: Fieldnote] = [:]
         for fieldnote in existing where existingByID[fieldnote.id] == nil {
             existingByID[fieldnote.id] = fieldnote

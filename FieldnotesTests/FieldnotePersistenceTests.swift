@@ -139,6 +139,7 @@ final class FieldnotePersistenceTests: XCTestCase {
             }
             try seedContext.save()
             try FieldnotesArchiveUsageRepository.reconcile(in: seedContext)
+            try seedContext.save()
         }
 
         let context = ModelContext(container)
@@ -234,10 +235,6 @@ private struct MeasuringArchiveUsageAccess: FieldnotesArchiveUsageAccess {
 
     func insertUsageModel(_ model: FieldnotesArchiveUsageModel) {
         base.insertUsageModel(model)
-    }
-
-    func save() throws {
-        try base.save()
     }
 }
 

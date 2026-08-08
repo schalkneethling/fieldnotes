@@ -141,6 +141,33 @@ final class FieldnotesStoreTests: XCTestCase {
         )
     }
 
+    func testUsageCurrentCreatesMissingLocalUsageRowWithoutSaving() throws {
+        let configuration = ModelConfiguration(
+            schema: FieldnotesStoreFactory.schema,
+            isStoredInMemoryOnly: true
+        )
+        let rawContainer = try ModelContainer(
+            for: FieldnotesStoreFactory.schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(rawContainer)
+        context.autosaveEnabled = false
+
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: context),
+            .empty
+        )
+        XCTAssertTrue(context.hasChanges)
+
+        let verificationContext = ModelContext(rawContainer)
+        XCTAssertEqual(
+            try verificationContext.fetchCount(
+                FetchDescriptor<FieldnotesArchiveUsageModel>()
+            ),
+            0
+        )
+    }
+
     func testDiagnosticsPreserveSafeUnderlyingCodesAndRedactPrivateDetails() {
         let privateError = NSError(
             domain: "Private path: /var/mobile/fieldnotes.store",

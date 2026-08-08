@@ -54,7 +54,7 @@ Fieldnotes does not create automatic or cloud backups, synchronize devices, sche
 
 ### Archive restore failure
 
-- Open the selected URL without following symlinks, verify that descriptor refers to a regular file, and reject an archive over 256 MiB before reading it.
+- Open the selected URL without following symlinks, verify that the descriptor refers to a regular file, and reject an archive over 256 MiB before reading it.
 - Read at most 256 MiB plus one byte from that same descriptor, then repeat the byte limit and expected-size checks afterward.
 - Validate the format, version, counts, finite timestamps, unique identifiers, text limits, and photo limits before changing SwiftData.
 - Treat an identical identifier and identical content as already restored.
@@ -74,17 +74,17 @@ Fieldnotes does not create automatic or cloud backups, synchronize devices, sche
 | Confirmed durable deletion | Integration and UI tests | Delete, force-quit, and verify absence after relaunch |
 | Store-open failure safety | Container factory failure test | Validate recovery UI with a controlled invalid store copy |
 | Manual export and restoration | Deterministic codec, bounded-read, exact round-trip, idempotency, conflict, and rollback tests | Export to Files, remove/reinstall, restore, relaunch, and compare text and media |
-| Scale and responsiveness | Performance tests at representative collection sizes | Instruments run on the primary trial device |
+| Scale and responsiveness | Deterministic save-cost test at 1,000 and 5,000 records plus performance tests at representative collection sizes | Instruments run on the primary trial device |
 
 ## Current gaps
 
 - Explicit throwing save and complete-Fieldnote integration tests are implemented in the first reliability slice; failure injection and UI coverage remain.
-- There is no save-operation seam for deterministic failure testing; startup failure injection is now covered separately.
-- The V1 schema and model shape are structurally frozen and pinned by tests. A checked-in disk-backed store created before the refactor proves the versioned factory preserves every Fieldnote field and external photo data. No V2 migration fixture exists yet because no schema change has shipped.
+- The save operation now has a repository seam for deterministic cost testing; save-failure injection and UI coverage remain incomplete.
+- The V1 schema and model shape remain structurally frozen and pinned by tests. V2 adds transactional archive-usage metadata, and the checked-in pre-versioning store proves migration preserves every Fieldnote field and external photo data while backfilling that metadata.
 - Store initialization now has testable idle, opening, ready, timeout-recovery, and error-recovery paths. Injected failures prove that no fallback or overlapping container is created; controlled invalid-store and physical-device recovery checks remain.
 - There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
 - Library media is stored in its original representation and camera media is compressed without resizing.
-- Manual JSON export and additive restoration are implemented with a 256 MiB cap. Physical-device recovery and representative-library performance remain to be verified. Automatic backup and synchronization remain out of scope.
+- Manual JSON export and additive restoration are implemented with a 256 MiB cap. Capture and restore update aggregate archive usage transactionally, so a new save does not walk existing external photo data. Physical-device recovery and representative-library performance remain to be verified. Automatic backup and synchronization remain out of scope.
 - Review fetches the full collection and filters time ranges in memory.
 - Image decoding occurs from view rendering and has no explicit memory budget.
 

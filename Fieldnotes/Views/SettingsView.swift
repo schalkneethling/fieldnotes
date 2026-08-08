@@ -196,11 +196,12 @@ struct SettingsView: View {
 
     private func restoreMessage(for result: FieldnotesRestoreResult) -> String {
         if result.addedFieldnoteCount == 0 {
-            return "Everything in this archive is already here. Nothing changed."
+            return String(localized: "Everything in this archive is already here. Nothing changed.")
         }
 
-        let noun = result.addedFieldnoteCount == 1 ? "Fieldnote" : "Fieldnotes"
-        return "Restored \(result.addedFieldnoteCount) \(noun). \(result.existingFieldnoteCount) already present."
+        return String(
+            localized: "Restored ^[\(result.addedFieldnoteCount) Fieldnote](inflect: true). \(result.existingFieldnoteCount) already present."
+        )
     }
 }
 
@@ -209,8 +210,9 @@ private struct PendingRestore {
     let preview: FieldnotesRestorePreview
 
     var message: String {
-        let newNoun = preview.newFieldnoteCount == 1 ? "Fieldnote" : "Fieldnotes"
-        return "This archive contains \(preview.fieldnoteCount) Fieldnotes. Restore \(preview.newFieldnoteCount) new \(newNoun.lowercased()) and keep \(preview.existingFieldnoteCount) already on this device? Nothing will be overwritten or deleted."
+        String(
+            localized: "This archive contains ^[\(preview.fieldnoteCount) Fieldnote](inflect: true). Restore ^[\(preview.newFieldnoteCount) new fieldnote](inflect: true) and keep \(preview.existingFieldnoteCount) already on this device? Nothing will be overwritten or deleted."
+        )
     }
 }
 

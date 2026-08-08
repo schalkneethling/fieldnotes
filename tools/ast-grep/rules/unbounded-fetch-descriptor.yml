@@ -1,0 +1,12 @@
+id: unbounded-fetch-descriptor
+language: swift
+severity: error
+rule:
+  any:
+    - pattern: $CONTEXT.fetch(FetchDescriptor<$MODEL>())
+    - pattern: '$CONTEXT.fetch(FetchDescriptor<$MODEL>(sortBy: $SORT))'
+message: >-
+  An inline FetchDescriptor with no predicate fetches the entire store because
+  there is no opportunity to set fetchLimit. If you need an aggregate, use
+  fetchCount or a maintained total. If this walk is deliberate, suppress with
+  a comment stating why.

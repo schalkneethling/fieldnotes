@@ -78,3 +78,12 @@ Statuses:
 - **Recovery behavior:** Permit retry against the same store and expose sanitized diagnostics containing only app/build versions, OS version, an allowlisted and bounded error-code chain, and a session support reference that is also written to local unified logs. Do not expose raw error messages, store paths, device identifiers, or Fieldnote content. If opening exceeds the timeout, show recovery information but do not start another opener until the original synchronous attempt returns.
 - **Schema constraint:** V1 owns a structurally frozen `Fieldnote` model exposed to the app through a typealias. Future versions define a separate model rather than editing V1 in place. A checked-in store created by the pre-versioning API and model is the compatibility fixture.
 - **Reason:** An unexplained crash is unusable, while a silent replacement store could make existing Fieldnotes appear lost and allow new captures into the wrong durability context.
+
+## D-010 — Keep single-Fieldnote writes independent of collection size
+
+- **Date:** 2026-08-08
+- **Status:** Accepted
+- **Decision:** A save validates one proposed Fieldnote against aggregate archive usage instead of fetching or constructing the complete collection. SwiftData supplies the aggregate count through `fetchCount`; a V2 singleton stores total photo bytes and the encoded-size estimate in the same transaction as Fieldnote writes.
+- **Migration and reconciliation:** The V1-to-V2 migration computes the singleton once from the existing store. A missing singleton is reconciled at container creation, which is the known repair schedule; normal saves read only the count and singleton.
+- **Verification:** A repository boundary makes read cost observable. A deterministic test requires the same records-read and bytes-deserialized cost at 1,000 and 5,000 existing Fieldnotes. Repository AST checks reject direct unbounded `FetchDescriptor` construction and discarded builder-like results unless a deliberate walk is documented.
+- **Reason:** Capture cost must be proportional to the new Fieldnote, especially when photos use external storage. The same predicate surface is shared by archive construction and prospective-save validation so limit rules do not drift.

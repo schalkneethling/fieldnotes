@@ -1,0 +1,14 @@
+id: unbounded-fetch-descriptor
+snapshots:
+  context.fetch(FetchDescriptor<Fieldnote>()):
+    labels:
+    - source: context.fetch(FetchDescriptor<Fieldnote>())
+      style: primary
+      start: 0
+      end: 43
+  'context.fetch(FetchDescriptor<Fieldnote>(sortBy: []))':
+    labels:
+    - source: 'context.fetch(FetchDescriptor<Fieldnote>(sortBy: []))'
+      style: primary
+      start: 0
+      end: 53

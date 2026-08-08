@@ -1,0 +1,11 @@
+id: unbounded-fetch-descriptor
+valid:
+  - context.fetchCount(FetchDescriptor<Fieldnote>())
+  - 'context.fetch(FetchDescriptor<Fieldnote>(predicate: #Predicate { $0.id == id }))'
+  - |
+      var descriptor = FetchDescriptor<Fieldnote>()
+      descriptor.fetchLimit = 1
+      context.fetch(descriptor)
+invalid:
+  - context.fetch(FetchDescriptor<Fieldnote>())
+  - 'context.fetch(FetchDescriptor<Fieldnote>(sortBy: []))'

@@ -77,6 +77,7 @@ The self-trial build is ready when:
 - The data-durability contract and its explicit limitations are documented.
 - Critical capture, save, retrieval, deletion, relaunch, migration, and recovery behavior passes automated coverage.
 - Text and media persistence pass the physical-device matrix on the primary trial device.
+- A manual archive export, reinstall, and restore returns every Fieldnote and attached photo.
 - Performance budgets are recorded and pass on the primary trial device with representative data volumes.
 - First launch and first successful capture work across permission and accessibility states.
 - Production icon and color assets are present.

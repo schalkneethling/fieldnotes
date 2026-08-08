@@ -1,0 +1,11 @@
+id: discarded-construction
+language: swift
+severity: error
+rule:
+  pattern: _ = try $EXPR
+constraints:
+  EXPR:
+    regex: '(?s)^(?:await\s+)?(?:[A-Za-z_][A-Za-z0-9_]*(?:<[^>]+>)?\??\.)*(?:make|build|encode|render)[A-Za-z0-9_]*\(.*\)$'
+message: >-
+  A construction-like result is immediately discarded. Extract the predicate
+  being asked and share it with the builder instead of paying construction cost.

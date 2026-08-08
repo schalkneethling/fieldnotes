@@ -108,6 +108,18 @@ struct FieldnotesArchiveLimits: Sendable {
     let maximumTotalPhotoBytes: Int
 }
 
+struct FieldnotesArchiveUsage: Equatable, Sendable {
+    static let empty = FieldnotesArchiveUsage(
+        fieldnoteCount: 0,
+        totalPhotoBytes: 0,
+        estimatedArchiveBytes: 1_024
+    )
+
+    let fieldnoteCount: Int
+    let totalPhotoBytes: Int
+    let estimatedArchiveBytes: Int
+}
+
 enum FieldnotesArchiveError: LocalizedError {
     case archiveTooLarge
     case unsupportedFile
@@ -164,7 +176,6 @@ enum FieldnotesArchiveCodec {
         }
         let archive = FieldnotesArchive(exportedAt: exportedAt, fieldnotes: sortedRecords)
         try validate(archive, limits: limits)
-        try validateEncodedSizeUpperBound(of: archive, limits: limits)
         return archive
     }
 
@@ -173,7 +184,6 @@ enum FieldnotesArchiveCodec {
         limits: FieldnotesArchiveLimits = .version1
     ) throws -> Data {
         try validate(archive, limits: limits)
-        try validateEncodedSizeUpperBound(of: archive, limits: limits)
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -224,58 +234,83 @@ enum FieldnotesArchiveCodec {
         guard archive.exportedAtUnixSeconds.isFinite else {
             throw FieldnotesArchiveError.invalidArchive
         }
-        guard archive.fieldnotes.count <= limits.maximumFieldnoteCount else {
-            throw FieldnotesArchiveError.tooManyFieldnotes
-        }
-
         var identifiers: Set<UUID> = []
-        var totalPhotoBytes = 0
+        var usage = FieldnotesArchiveUsage.empty
+        guard usage.estimatedArchiveBytes <= limits.maximumArchiveBytes else {
+            throw FieldnotesArchiveError.archiveTooLarge
+        }
 
         for fieldnote in archive.fieldnotes {
             guard identifiers.insert(fieldnote.id).inserted else {
                 throw FieldnotesArchiveError.duplicateIdentifier(fieldnote.id)
             }
-            guard fieldnote.createdAtUnixSeconds.isFinite else {
-                throw FieldnotesArchiveError.invalidArchive
-            }
-            guard fieldnote.text.utf8.count <= limits.maximumTextBytes else {
-                throw FieldnotesArchiveError.fieldnoteTextTooLarge
-            }
-            guard let photoData = fieldnote.photoData else { continue }
-            guard photoData.count <= limits.maximumPhotoBytes else {
-                throw FieldnotesArchiveError.fieldnotePhotoTooLarge
-            }
-            let (newTotal, overflow) = totalPhotoBytes.addingReportingOverflow(photoData.count)
-            guard !overflow, newTotal <= limits.maximumTotalPhotoBytes else {
-                throw FieldnotesArchiveError.totalPhotoDataTooLarge
-            }
-            totalPhotoBytes = newTotal
+            usage = try validate(fieldnote, addingTo: usage, limits: limits)
         }
     }
 
-    private static func validateEncodedSizeUpperBound(
-        of archive: FieldnotesArchive,
+    static func validate(
+        _ record: FieldnotesArchiveRecord,
+        addingTo usage: FieldnotesArchiveUsage,
+        exportedAt: Date = .now,
         limits: FieldnotesArchiveLimits
-    ) throws {
-        var estimatedBytes = 1_024
-        guard estimatedBytes <= limits.maximumArchiveBytes else {
+    ) throws -> FieldnotesArchiveUsage {
+        guard exportedAt.timeIntervalSince1970.isFinite else {
+            throw FieldnotesArchiveError.invalidArchive
+        }
+        guard record.createdAtUnixSeconds.isFinite else {
+            throw FieldnotesArchiveError.invalidArchive
+        }
+        guard record.text.utf8.count <= limits.maximumTextBytes else {
+            throw FieldnotesArchiveError.fieldnoteTextTooLarge
+        }
+        guard (record.photoData?.count ?? 0) <= limits.maximumPhotoBytes else {
+            throw FieldnotesArchiveError.fieldnotePhotoTooLarge
+        }
+
+        let updatedUsage = try measure(record, addingTo: usage)
+        guard updatedUsage.fieldnoteCount <= limits.maximumFieldnoteCount else {
+            throw FieldnotesArchiveError.tooManyFieldnotes
+        }
+        guard updatedUsage.totalPhotoBytes <= limits.maximumTotalPhotoBytes else {
+            throw FieldnotesArchiveError.totalPhotoDataTooLarge
+        }
+        guard updatedUsage.estimatedArchiveBytes <= limits.maximumArchiveBytes else {
             throw FieldnotesArchiveError.archiveTooLarge
         }
+        return updatedUsage
+    }
 
-        for fieldnote in archive.fieldnotes {
-            try add(1_024, to: &estimatedBytes)
-            try add(fieldnote.text.utf8.count * 6, to: &estimatedBytes)
-            try add((fieldnote.emoji?.utf8.count ?? 0) * 6, to: &estimatedBytes)
-
-            if let photoData = fieldnote.photoData {
-                let groups = (photoData.count + 2) / 3
-                try add(groups * 4, to: &estimatedBytes)
-            }
-
-            guard estimatedBytes <= limits.maximumArchiveBytes else {
-                throw FieldnotesArchiveError.archiveTooLarge
-            }
+    static func measure(
+        _ record: FieldnotesArchiveRecord,
+        addingTo usage: FieldnotesArchiveUsage
+    ) throws -> FieldnotesArchiveUsage {
+        let (fieldnoteCount, countOverflow) = usage.fieldnoteCount.addingReportingOverflow(1)
+        guard !countOverflow else {
+            throw FieldnotesArchiveError.tooManyFieldnotes
         }
+
+        let (totalPhotoBytes, photoOverflow) = usage.totalPhotoBytes.addingReportingOverflow(
+            record.photoData?.count ?? 0
+        )
+        guard !photoOverflow else {
+            throw FieldnotesArchiveError.totalPhotoDataTooLarge
+        }
+
+        var estimatedArchiveBytes = usage.estimatedArchiveBytes
+        try add(1_024, to: &estimatedArchiveBytes)
+        try add(record.text.utf8.count * 6, to: &estimatedArchiveBytes)
+        try add((record.emoji?.utf8.count ?? 0) * 6, to: &estimatedArchiveBytes)
+
+        if let photoData = record.photoData {
+            let groups = (photoData.count + 2) / 3
+            try add(groups * 4, to: &estimatedArchiveBytes)
+        }
+
+        return FieldnotesArchiveUsage(
+            fieldnoteCount: fieldnoteCount,
+            totalPhotoBytes: totalPhotoBytes,
+            estimatedArchiveBytes: estimatedArchiveBytes
+        )
     }
 
     private static func add(_ bytes: Int, to total: inout Int) throws {
@@ -291,7 +326,9 @@ enum FieldnotesArchiveCodec {
     ) throws -> Data {
         let descriptor = url.withUnsafeFileSystemRepresentation { path -> Int32 in
             guard let path else { return -1 }
-            return open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+            return retryingInterruptedSyscall {
+                open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+            }
         }
         guard descriptor >= 0 else {
             throw FieldnotesArchiveError.unsupportedFile
@@ -319,7 +356,9 @@ enum FieldnotesArchiveCodec {
             guard remaining > 0 else {
                 throw FieldnotesArchiveError.archiveTooLarge
             }
-            let bytesRead = Darwin.read(descriptor, &buffer, min(buffer.count, remaining))
+            let bytesRead: Int = retryingInterruptedSyscall {
+                Darwin.read(descriptor, &buffer, min(buffer.count, remaining))
+            }
             guard bytesRead >= 0 else {
                 throw FieldnotesArchiveError.invalidArchive
             }
@@ -336,6 +375,16 @@ enum FieldnotesArchiveCodec {
                 : FieldnotesArchiveError.invalidArchive
         }
         return data
+    }
+
+    static func retryingInterruptedSyscall<Result: FixedWidthInteger & SignedInteger>(
+        _ operation: () -> Result
+    ) -> Result {
+        var result: Result
+        repeat {
+            result = operation()
+        } while result == -1 && errno == EINTR
+        return result
     }
 }
 
@@ -368,6 +417,106 @@ struct FieldnotesRestoreResult: Equatable, Sendable {
     let existingFieldnoteCount: Int
 }
 
+enum FieldnotesWriteSerialization {
+    private static let lock = NSLock()
+
+    static func withLock<Result>(_ operation: () throws -> Result) rethrows -> Result {
+        try lock.withLock(operation)
+    }
+}
+
+enum FieldnotesArchiveUsageRepository {
+    private static let singletonKey = "version-1"
+
+    static func ensurePresent(in context: ModelContext) throws {
+        guard try model(in: context) == nil else { return }
+        guard try context.fetchCount(FetchDescriptor<Fieldnote>()) > 0 else {
+            let usage = FieldnotesArchiveUsage.empty
+            context.insert(
+                FieldnotesArchiveUsageModel(
+                    key: singletonKey,
+                    totalPhotoBytes: usage.totalPhotoBytes,
+                    estimatedArchiveBytes: usage.estimatedArchiveBytes
+                )
+            )
+            try context.save()
+            return
+        }
+        try reconcile(in: context)
+    }
+
+    static func current(in context: ModelContext) throws -> FieldnotesArchiveUsage {
+        try ensurePresent(in: context)
+        let storedUsage = try requiredModel(in: context)
+        return FieldnotesArchiveUsage(
+            fieldnoteCount: try context.fetchCount(FetchDescriptor<Fieldnote>()),
+            totalPhotoBytes: storedUsage.totalPhotoBytes,
+            estimatedArchiveBytes: storedUsage.estimatedArchiveBytes
+        )
+    }
+
+    static func update(
+        _ usage: FieldnotesArchiveUsage,
+        in context: ModelContext
+    ) throws {
+        let storedUsage = try requiredModel(in: context)
+        storedUsage.totalPhotoBytes = usage.totalPhotoBytes
+        storedUsage.estimatedArchiveBytes = usage.estimatedArchiveBytes
+    }
+
+    static func reconcile(in context: ModelContext) throws {
+        var usage = FieldnotesArchiveUsage.empty
+        var descriptor = FetchDescriptor<Fieldnote>()
+        descriptor.propertiesToFetch = [
+            \Fieldnote.id,
+            \Fieldnote.createdAt,
+            \Fieldnote.text,
+            \Fieldnote.emoji,
+            \Fieldnote.photoData
+        ]
+        try context.enumerate(descriptor, batchSize: 100) { fieldnote in
+            usage = try FieldnotesArchiveCodec.measure(
+                FieldnotesArchiveRecord(fieldnote: fieldnote),
+                addingTo: usage
+            )
+        }
+
+        if let storedUsage = try model(in: context) {
+            storedUsage.totalPhotoBytes = usage.totalPhotoBytes
+            storedUsage.estimatedArchiveBytes = usage.estimatedArchiveBytes
+        } else {
+            context.insert(
+                FieldnotesArchiveUsageModel(
+                    key: singletonKey,
+                    totalPhotoBytes: usage.totalPhotoBytes,
+                    estimatedArchiveBytes: usage.estimatedArchiveBytes
+                )
+            )
+        }
+        try context.save()
+    }
+
+    private static func requiredModel(
+        in context: ModelContext
+    ) throws -> FieldnotesArchiveUsageModel {
+        guard let model = try model(in: context) else {
+            throw FieldnotesArchiveError.invalidArchive
+        }
+        return model
+    }
+
+    private static func model(
+        in context: ModelContext
+    ) throws -> FieldnotesArchiveUsageModel? {
+        let key = singletonKey
+        var descriptor = FetchDescriptor<FieldnotesArchiveUsageModel>(
+            predicate: #Predicate { $0.key == key }
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+}
+
 @ModelActor
 actor FieldnotesArchiveStore {
     typealias ContextSaver = @Sendable (ModelContext) throws -> Void
@@ -398,41 +547,52 @@ actor FieldnotesArchiveStore {
         save: ContextSaver = { try $0.save() }
     ) throws -> FieldnotesRestoreResult {
         try FieldnotesArchiveCodec.validate(archive)
-        modelContext.autosaveEnabled = false
-        let classification = try classify(archive)
-        guard !classification.missing.isEmpty else {
+        return try FieldnotesWriteSerialization.withLock {
+            modelContext.autosaveEnabled = false
+            let classification = try classify(archive)
+            guard !classification.missing.isEmpty else {
+                return FieldnotesRestoreResult(
+                    addedFieldnoteCount: 0,
+                    existingFieldnoteCount: classification.existingCount
+                )
+            }
+
+            do {
+                for record in classification.missing {
+                    let fieldnote = Fieldnote(
+                        text: record.text,
+                        emoji: record.emoji,
+                        photoData: record.photoData,
+                        createdAt: Date(timeIntervalSince1970: record.createdAtUnixSeconds)
+                    )
+                    fieldnote.id = record.id
+                    modelContext.insert(fieldnote)
+                }
+                try FieldnotesArchiveUsageRepository.update(
+                    classification.updatedUsage,
+                    in: modelContext
+                )
+                try save(modelContext)
+            } catch {
+                modelContext.rollback()
+                throw error
+            }
+
             return FieldnotesRestoreResult(
-                addedFieldnoteCount: 0,
+                addedFieldnoteCount: classification.missing.count,
                 existingFieldnoteCount: classification.existingCount
             )
         }
-
-        do {
-            for record in classification.missing {
-                let fieldnote = Fieldnote(
-                    text: record.text,
-                    emoji: record.emoji,
-                    photoData: record.photoData,
-                    createdAt: Date(timeIntervalSince1970: record.createdAtUnixSeconds)
-                )
-                fieldnote.id = record.id
-                modelContext.insert(fieldnote)
-            }
-            try save(modelContext)
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
-
-        return FieldnotesRestoreResult(
-            addedFieldnoteCount: classification.missing.count,
-            existingFieldnoteCount: classification.existingCount
-        )
     }
 
     private func classify(
         _ archive: FieldnotesArchive
-    ) throws -> (missing: [FieldnotesArchiveRecord], existingCount: Int) {
+    ) throws -> (
+        missing: [FieldnotesArchiveRecord],
+        existingCount: Int,
+        updatedUsage: FieldnotesArchiveUsage
+    ) {
+        // ast-grep-ignore: unbounded-fetch-descriptor -- restore compares archive IDs against the complete local collection deliberately.
         let existing = try modelContext.fetch(FetchDescriptor<Fieldnote>())
         let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
         var missing: [FieldnotesArchiveRecord] = []
@@ -449,12 +609,16 @@ actor FieldnotesArchiveStore {
             existingCount += 1
         }
 
-        let combinedRecords = existing.map(FieldnotesArchiveRecord.init) + missing
-        _ = try FieldnotesArchiveCodec.makeArchive(
-            from: combinedRecords,
-            exportedAt: Date(timeIntervalSince1970: 0)
-        )
+        var updatedUsage = try FieldnotesArchiveUsageRepository.current(in: modelContext)
+        for record in missing {
+            updatedUsage = try FieldnotesArchiveCodec.validate(
+                record,
+                addingTo: updatedUsage,
+                exportedAt: Date(timeIntervalSince1970: 0),
+                limits: .version1
+            )
+        }
 
-        return (missing, existingCount)
+        return (missing, existingCount, updatedUsage)
     }
 }

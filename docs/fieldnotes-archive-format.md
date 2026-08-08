@@ -43,6 +43,6 @@ Version 1 accepts at most:
 - 32 MiB per decoded photo; and
 - 180 MiB of decoded photo data in total.
 
-Capture, export, and restore apply the same limits so a successful write cannot leave Fieldnotes with a version 1 store it cannot export. Import opens the selected path without following symlinks, checks the resulting descriptor is a regular file within the limit, reads at most the limit plus one byte from that same descriptor, then verifies the byte count and file size again afterward.
+Capture, export, and restore apply the same limits so a successful write cannot leave Fieldnotes with a version 1 store it cannot export. Capture checks a SwiftData aggregate count plus transactionally maintained photo-byte and encoded-size totals rather than loading existing Fieldnotes; V1-to-V2 migration backfills those totals once. Import opens the selected path without following symlinks, checks the resulting descriptor is a regular file within the limit, reads at most the limit plus one byte from that same descriptor, then verifies the byte count and file size again afterward.
 
 Archives are not encrypted by Fieldnotes. They contain private Fieldnote content and should be stored somewhere the owner trusts. An archive is a manual point-in-time copy, not an automatic backup or synchronization service.

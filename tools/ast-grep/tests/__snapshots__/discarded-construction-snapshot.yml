@@ -1,0 +1,32 @@
+id: discarded-construction
+snapshots:
+  '_ = try Builder.makeArchive(from: records)':
+    labels:
+    - source: '_ = try Builder.makeArchive(from: records)'
+      style: primary
+      start: 0
+      end: 42
+  _ = try Builder<Fieldnote>.makeArchive():
+    labels:
+    - source: _ = try Builder<Fieldnote>.makeArchive()
+      style: primary
+      start: 0
+      end: 40
+  _ = try await renderer.renderPreview():
+    labels:
+    - source: _ = try await renderer.renderPreview()
+      style: primary
+      start: 0
+      end: 38
+  _ = try builder?.makeArchive():
+    labels:
+    - source: _ = try builder?.makeArchive()
+      style: primary
+      start: 0
+      end: 30
+  _ = try encode(value):
+    labels:
+    - source: _ = try encode(value)
+      style: primary
+      start: 0
+      end: 21

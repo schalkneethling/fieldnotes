@@ -144,6 +144,29 @@ final class FieldnotesArchiveTests: XCTestCase {
         }
     }
 
+    func testInterruptedSyscallsRetryAndOtherFailuresDoNot() {
+        var openAttempts = 0
+        let openResult: Int32 = FieldnotesArchiveCodec.retryingInterruptedSyscall {
+            openAttempts += 1
+            if openAttempts == 1 {
+                errno = EINTR
+                return -1
+            }
+            return 42
+        }
+        XCTAssertEqual(openResult, 42)
+        XCTAssertEqual(openAttempts, 2)
+
+        var readAttempts = 0
+        let readResult: Int = FieldnotesArchiveCodec.retryingInterruptedSyscall {
+            readAttempts += 1
+            errno = EIO
+            return -1
+        }
+        XCTAssertEqual(readResult, -1)
+        XCTAssertEqual(readAttempts, 1)
+    }
+
     func testEveryDeclaredValidationLimitIsEnforced() throws {
         let tinyLimits = FieldnotesArchiveLimits(
             maximumArchiveBytes: 4_096,
@@ -278,6 +301,7 @@ final class FieldnotesArchiveTests: XCTestCase {
         XCTAssertEqual(secondResult, FieldnotesRestoreResult(addedFieldnoteCount: 0, existingFieldnoteCount: 2))
 
         let verificationContext = ModelContext(container)
+        // ast-grep-ignore: unbounded-fetch-descriptor -- this restore test compares the complete two-record fixture.
         let restored = try verificationContext.fetch(FetchDescriptor<Fieldnote>())
         XCTAssertEqual(restored.count, 2)
         XCTAssertEqual(Set(restored.map(\.id)), Set([first.id, second.id]))
@@ -285,6 +309,12 @@ final class FieldnotesArchiveTests: XCTestCase {
         XCTAssertEqual(restored.first(where: { $0.id == first.id })?.text, first.text)
         XCTAssertEqual(restored.first(where: { $0.id == first.id })?.emoji, first.emoji)
         XCTAssertEqual(restored.first(where: { $0.id == first.id })?.photoData, first.photoData)
+        let usage = try FieldnotesArchiveUsageRepository.current(in: verificationContext)
+        XCTAssertEqual(usage.fieldnoteCount, 2)
+        XCTAssertEqual(
+            usage.totalPhotoBytes,
+            (first.photoData?.count ?? 0) + (second.photoData?.count ?? 0)
+        )
     }
 
     func testStoreExportDecodesAndRestoresIntoFreshStore() async throws {
@@ -322,6 +352,7 @@ final class FieldnotesArchiveTests: XCTestCase {
 
         XCTAssertEqual(result.addedFieldnoteCount, 1)
         let restored = try XCTUnwrap(
+            // ast-grep-ignore: unbounded-fetch-descriptor -- this fresh-store round trip intentionally verifies its only record.
             ModelContext(freshContainer).fetch(FetchDescriptor<Fieldnote>()).only
         )
         XCTAssertEqual(restored.id, id)
@@ -355,6 +386,7 @@ final class FieldnotesArchiveTests: XCTestCase {
         }
 
         let verificationContext = ModelContext(container)
+        // ast-grep-ignore: unbounded-fetch-descriptor -- conflict verification must inspect the complete small fixture.
         let fieldnotes = try verificationContext.fetch(FetchDescriptor<Fieldnote>())
         XCTAssertEqual(fieldnotes.count, 1)
         XCTAssertEqual(fieldnotes.only?.id, conflictingID)
@@ -376,7 +408,12 @@ final class FieldnotesArchiveTests: XCTestCase {
         }
 
         let verificationContext = ModelContext(container)
+        // ast-grep-ignore: unbounded-fetch-descriptor -- rollback verification must prove the fixture store remains empty.
         XCTAssertTrue(try verificationContext.fetch(FetchDescriptor<Fieldnote>()).isEmpty)
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: verificationContext),
+            .empty
+        )
     }
 
     func testSameContentWithDifferentIdentifiersRemainsDistinct() async throws {
@@ -402,6 +439,7 @@ final class FieldnotesArchiveTests: XCTestCase {
 
         XCTAssertEqual(result.addedFieldnoteCount, 2)
         let verificationContext = ModelContext(container)
+        // ast-grep-ignore: unbounded-fetch-descriptor -- identity verification compares the complete two-record fixture.
         let restored = try verificationContext.fetch(FetchDescriptor<Fieldnote>())
         XCTAssertEqual(Set(restored.map(\.id)), Set([first.id, second.id]))
     }

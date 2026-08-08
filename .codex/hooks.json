@@ -1,0 +1,18 @@
+{
+  "description": "Run Fieldnotes static guardrails after source edits.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel)/tools/hooks/ast-grep-post-edit.sh\"",
+            "timeout": 30,
+            "statusMessage": "Scanning edited Swift code"
+          }
+        ]
+      }
+    ]
+  }
+}

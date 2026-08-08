@@ -22,8 +22,7 @@ enum PhotoProcessingError: LocalizedError {
 enum PhotoProcessor {
     static let maximumPixelDimension = 2_048
     static let maximumEncodedBytes = 8 * 1_024 * 1_024
-
-    private static let compressionQualities = [0.82, 0.72, 0.62, 0.52]
+    static let compressionQuality = 0.82
 
     static func normalize(_ sourceData: Data) throws -> Data {
         guard !sourceData.isEmpty,
@@ -46,14 +45,11 @@ enum PhotoProcessor {
             throw PhotoProcessingError.invalidImage
         }
 
-        for quality in compressionQualities {
-            let data = try encodeJPEG(image, quality: quality)
-            if data.count <= maximumEncodedBytes {
-                return data
-            }
+        let data = try encodeJPEG(image, quality: compressionQuality)
+        guard data.count <= maximumEncodedBytes else {
+            throw PhotoProcessingError.encodedImageTooLarge
         }
-
-        throw PhotoProcessingError.encodedImageTooLarge
+        return data
     }
 
     private static func encodeJPEG(_ image: CGImage, quality: Double) throws -> Data {

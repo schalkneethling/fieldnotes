@@ -224,9 +224,7 @@ struct EntryEditorView: View {
         } header: {
             Label(photoSelection.data == nil ? "Photo" : "Photo attached", systemImage: photoSelection.data == nil ? "camera" : "checkmark.circle")
         } footer: {
-            if photoSelection.data == nil {
-                Text("Optional. One image keeps the note light.")
-            }
+            Text("Optional. Fieldnotes stores an optimized copy up to 2,048 px, not the original. Library originals remain in Photos.")
         }
     }
 

@@ -92,6 +92,9 @@ Statuses:
 
 - **Date:** 2026-08-08
 - **Status:** Accepted
-- **Decision:** Run camera and library images through one pre-persistence pipeline. Apply source orientation, cap the longest edge at 2,048 pixels, encode as JPEG, and reject any result that cannot be kept within 8 MiB.
+- **Decision:** Run camera and library images through one pre-persistence pipeline. Apply source orientation, cap the longest edge at 2,048 pixels, encode once as JPEG at a fixed quality of 0.82, and reject any result over 8 MiB rather than silently lowering its quality.
 - **Boundary:** The rule applies to new captures. Archive restoration preserves historical photo bytes exactly so a portable backup remains lossless with respect to the exported Fieldnote.
+- **Disclosure:** Capture explains that Fieldnotes stores an optimized copy rather than the original and that library originals remain in Photos. A photo taken inside Fieldnotes may exist only as that optimized copy.
+- **Future configuration:** Storage-quality presets should be available to every user because larger photos consume the user’s own device and archive storage; they are not a subscription entitlement.
 - **Reason:** A bounded stored representation keeps capture, retrieval, export, scrolling, and memory costs predictable without retaining unnecessarily large originals inside a lightweight Fieldnote.
+- **Tracking:** GitHub issues #7 and #28.

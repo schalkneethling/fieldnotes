@@ -100,6 +100,7 @@ final class FieldnotePersistenceTests: XCTestCase {
             normalizedData.count,
             PhotoProcessor.maximumEncodedBytes
         )
+        XCTAssertEqual(PhotoProcessor.compressionQuality, 0.82)
     }
 
     func testPhotoProcessorAppliesSourceOrientation() throws {

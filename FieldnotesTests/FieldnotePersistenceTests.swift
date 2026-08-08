@@ -1,6 +1,8 @@
 import Foundation
+import ImageIO
 import SwiftData
 import UIKit
+import UniformTypeIdentifiers
 import XCTest
 @testable import Fieldnotes
 
@@ -106,12 +108,36 @@ final class FieldnotePersistenceTests: XCTestCase {
     func testPhotoProcessorAppliesSourceOrientation() throws {
         let sourceImage = makeImage(size: CGSize(width: 120, height: 60))
         let sourceCGImage = try XCTUnwrap(sourceImage.cgImage)
-        let orientedImage = UIImage(
-            cgImage: sourceCGImage,
-            scale: 1,
-            orientation: .right
+        let mutableSourceData = NSMutableData()
+        let destination = try XCTUnwrap(
+            CGImageDestinationCreateWithData(
+                mutableSourceData,
+                UTType.jpeg.identifier as CFString,
+                1,
+                nil
+            )
         )
-        let sourceData = try XCTUnwrap(orientedImage.jpegData(compressionQuality: 1))
+        CGImageDestinationAddImage(
+            destination,
+            sourceCGImage,
+            [
+                kCGImageDestinationLossyCompressionQuality: 1,
+                kCGImagePropertyOrientation: CGImagePropertyOrientation.right.rawValue
+            ] as CFDictionary
+        )
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+
+        let sourceData = mutableSourceData as Data
+        let source = try XCTUnwrap(
+            CGImageSourceCreateWithData(sourceData as CFData, nil)
+        )
+        let properties = try XCTUnwrap(
+            CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        )
+        XCTAssertEqual(
+            (properties[kCGImagePropertyOrientation] as? NSNumber)?.uint32Value,
+            CGImagePropertyOrientation.right.rawValue
+        )
 
         let normalizedData = try PhotoProcessor.normalize(sourceData)
         let normalizedImage = try XCTUnwrap(UIImage(data: normalizedData))

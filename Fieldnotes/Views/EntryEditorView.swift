@@ -110,7 +110,10 @@ struct EntryEditorView: View {
     }
 
     private var isSelectedPhotoReady: Bool {
-        guard selectedPhotoItem != nil else { return true }
+        guard selectedPhotoItem != nil else {
+            return !photoSelection.isLoading
+                && photoSelection.errorMessage == nil
+        }
         return photoSelection.isReady
     }
 

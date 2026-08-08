@@ -12,12 +12,13 @@ final class FieldnotesStoreTests: XCTestCase {
     }
 
     func testV1SchemaShapeIsFrozen() throws {
-        let entity = try XCTUnwrap(FieldnotesStoreFactory.schema.entities.only)
+        let schema = Schema(versionedSchema: FieldnotesSchemaV1.self)
+        let entity = try XCTUnwrap(schema.entities.only)
         let attributes = entity.attributesByName
         let id = try XCTUnwrap(attributes["id"])
         let photo = try XCTUnwrap(attributes["photoData"])
 
-        XCTAssertEqual(FieldnotesStoreFactory.schema.version, Schema.Version(1, 0, 0))
+        XCTAssertEqual(schema.version, Schema.Version(1, 0, 0))
         XCTAssertEqual(entity.name, "Fieldnote")
         XCTAssertEqual(
             attributes.mapValues { String(reflecting: $0.valueType) },
@@ -37,6 +38,42 @@ final class FieldnotesStoreTests: XCTestCase {
         XCTAssertTrue(id.isUnique)
         XCTAssertTrue(photo.options.contains(.externalStorage))
         XCTAssertTrue(entity.relationships.isEmpty)
+    }
+
+    func testV2SchemaShapeIsFrozen() throws {
+        let schema = Schema(versionedSchema: FieldnotesSchemaV2.self)
+        let entities = Dictionary(uniqueKeysWithValues: schema.entities.map { ($0.name, $0) })
+        let fieldnote = try XCTUnwrap(entities["Fieldnote"])
+        let fieldnoteAttributes = fieldnote.attributesByName
+        let usage = try XCTUnwrap(entities["ArchiveUsage"])
+        let usageAttributes = usage.attributesByName
+
+        XCTAssertEqual(schema.version, Schema.Version(2, 0, 0))
+        XCTAssertEqual(Set(entities.keys), ["Fieldnote", "ArchiveUsage"])
+        XCTAssertEqual(
+            fieldnoteAttributes.mapValues { String(reflecting: $0.valueType) },
+            [
+                "id": "Foundation.UUID",
+                "createdAt": "Foundation.Date",
+                "text": "Swift.String",
+                "emoji": "Swift.Optional<Swift.String>",
+                "photoData": "Swift.Optional<Foundation.Data>"
+            ]
+        )
+        XCTAssertTrue(try XCTUnwrap(fieldnoteAttributes["id"]).isUnique)
+        XCTAssertTrue(try XCTUnwrap(fieldnoteAttributes["photoData"]).options.contains(.externalStorage))
+        XCTAssertTrue(fieldnote.relationships.isEmpty)
+        XCTAssertEqual(
+            usageAttributes.mapValues { String(reflecting: $0.valueType) },
+            [
+                "key": "Swift.String",
+                "totalPhotoBytes": "Swift.Int",
+                "estimatedArchiveBytes": "Swift.Int"
+            ]
+        )
+        XCTAssertTrue(try XCTUnwrap(usageAttributes["key"]).isUnique)
+        XCTAssertTrue(usageAttributes.values.allSatisfy { !$0.isOptional })
+        XCTAssertTrue(usage.relationships.isEmpty)
     }
 
     func testVersionedContainerReopensCheckedInPreVersioningStore() throws {
@@ -59,6 +96,7 @@ final class FieldnotesStoreTests: XCTestCase {
             configuration: versionedConfiguration
         )
         let fetched = try XCTUnwrap(
+            // ast-grep-ignore: unbounded-fetch-descriptor -- the migration fixture intentionally verifies its complete one-record store.
             versionedContainer.mainContext.fetch(FetchDescriptor<Fieldnote>()).only
         )
 
@@ -67,6 +105,67 @@ final class FieldnotesStoreTests: XCTestCase {
         XCTAssertEqual(fetched.text, "Still here after versioning.")
         XCTAssertEqual(fetched.emoji, "🌱")
         XCTAssertEqual(fetched.photoData, Data(repeating: 0xAB, count: 262_144))
+
+        let usage = try FieldnotesArchiveUsageRepository.current(
+            in: versionedContainer.mainContext
+        )
+        XCTAssertEqual(usage.fieldnoteCount, 1)
+        XCTAssertEqual(usage.totalPhotoBytes, 262_144)
+        XCTAssertGreaterThan(usage.estimatedArchiveBytes, usage.totalPhotoBytes)
+        XCTAssertLessThan(usage.estimatedArchiveBytes, 1 * 1_024 * 1_024)
+    }
+
+    func testUsageUpdateCreatesMissingLocalUsageRow() throws {
+        let configuration = ModelConfiguration(
+            schema: FieldnotesStoreFactory.schema,
+            isStoredInMemoryOnly: true
+        )
+        let rawContainer = try ModelContainer(
+            for: FieldnotesStoreFactory.schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(rawContainer)
+        context.autosaveEnabled = false
+        let expected = FieldnotesArchiveUsage(
+            fieldnoteCount: 0,
+            totalPhotoBytes: 2,
+            estimatedArchiveBytes: 2_048
+        )
+
+        try FieldnotesArchiveUsageRepository.update(expected, in: context)
+        try context.save()
+
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: context),
+            expected
+        )
+    }
+
+    func testUsageCurrentCreatesMissingLocalUsageRowWithoutSaving() throws {
+        let configuration = ModelConfiguration(
+            schema: FieldnotesStoreFactory.schema,
+            isStoredInMemoryOnly: true
+        )
+        let rawContainer = try ModelContainer(
+            for: FieldnotesStoreFactory.schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(rawContainer)
+        context.autosaveEnabled = false
+
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: context),
+            .empty
+        )
+        XCTAssertTrue(context.hasChanges)
+
+        let verificationContext = ModelContext(rawContainer)
+        XCTAssertEqual(
+            try verificationContext.fetchCount(
+                FetchDescriptor<FieldnotesArchiveUsageModel>()
+            ),
+            0
+        )
     }
 
     func testDiagnosticsPreserveSafeUnderlyingCodesAndRedactPrivateDetails() {

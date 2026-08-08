@@ -94,6 +94,7 @@ struct EntryEditorView: View {
     @State private var photoSelection = PhotoSelectionState()
     @State private var saveErrorMessage = ""
     @State private var isShowingSaveError = false
+    @State private var isSaving = false
     @State private var isShowingCamera = false
     @State private var dictationBaseText = ""
     @StateObject private var speechTranscriber = SpeechTranscriber()
@@ -105,7 +106,7 @@ struct EntryEditorView: View {
     }
 
     private var canSave: Bool {
-        !trimmedNote.isEmpty && isSelectedPhotoReady
+        !trimmedNote.isEmpty && isSelectedPhotoReady && !isSaving
     }
 
     private var isSelectedPhotoReady: Bool {
@@ -127,6 +128,7 @@ struct EntryEditorView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .disabled(isSaving)
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
@@ -328,18 +330,26 @@ struct EntryEditorView: View {
 
     private func save() {
         guard canSave else { return }
+        isSaving = true
 
-        do {
-            try FieldnotePersistence.save(
-                text: trimmedNote,
-                emoji: selectedEmoji,
-                photoData: photoSelection.data,
-                in: modelContext
-            )
-            dismiss()
-        } catch {
-            saveErrorMessage = "Your draft is still here. Check available storage and try again."
-            isShowingSaveError = true
+        Task { @MainActor in
+            do {
+                let persistence = FieldnotePersistenceStore(modelContainer: modelContext.container)
+                _ = try await persistence.save(
+                    text: trimmedNote,
+                    emoji: selectedEmoji,
+                    photoData: photoSelection.data
+                )
+                dismiss()
+            } catch {
+                if error is FieldnotesArchiveError {
+                    saveErrorMessage = "Your draft is still here. \(error.localizedDescription)"
+                } else {
+                    saveErrorMessage = "Your draft is still here. Check available storage and try again."
+                }
+                isShowingSaveError = true
+                isSaving = false
+            }
         }
     }
 

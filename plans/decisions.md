@@ -54,10 +54,13 @@ Statuses:
 ## D-007 — Define the durability boundary for device loss and app deletion
 
 - **Date:** 2026-08-03
-- **Status:** Open
-- **Question:** Must the first trial support export and restoration, or is an explicit limitation acceptable until a later build?
-- **Reason:** Local SwiftData persistence can protect ordinary saves and upgrades but cannot by itself recover data after device loss or app deletion.
-- **Tracking:** GitHub issue #21.
+- **Decided:** 2026-08-06
+- **Status:** Accepted
+- **Decision:** Manual export and restoration are release gates for the first internal trial. Export a versioned JSON archive containing every Fieldnote field and attached photo. Restore additively: missing identifiers are inserted, identical identifiers are treated as already present, and a differing Fieldnote with the same identifier rejects the entire restore. Restoration never overwrites or deletes local Fieldnotes.
+- **Safety boundary:** Validate the complete archive before mutation, restore with one explicit save in a dedicated non-autosaving context, and roll back on failure. Reject non-regular, unsupported, malformed, conflicting, or oversized archives without changing the store. The first format is capped at 256 MiB and uses one opened file descriptor for bounded pre-read and post-read checks. New captures and restores enforce the same version 1 limits so a successful write cannot make the store unexportable.
+- **Privacy and backup boundary:** Archives are portable but are not encrypted by Fieldnotes. The owner chooses a private destination and must export again to capture later changes. Fieldnotes does not yet provide automatic backup, cloud synchronization, accounts, background exports, or recovery without an accessible archive.
+- **Reason:** A one-person trial still creates meaningful personal data. A deliberate portable copy makes app deletion and device replacement recoverable without expanding the trial into an account or sync system.
+- **Tracking:** GitHub issues #21 and #24.
 
 ## D-008 — Require pull requests for changes to main
 
@@ -75,3 +78,12 @@ Statuses:
 - **Recovery behavior:** Permit retry against the same store and expose sanitized diagnostics containing only app/build versions, OS version, an allowlisted and bounded error-code chain, and a session support reference that is also written to local unified logs. Do not expose raw error messages, store paths, device identifiers, or Fieldnote content. If opening exceeds the timeout, show recovery information but do not start another opener until the original synchronous attempt returns.
 - **Schema constraint:** V1 owns a structurally frozen `Fieldnote` model exposed to the app through a typealias. Future versions define a separate model rather than editing V1 in place. A checked-in store created by the pre-versioning API and model is the compatibility fixture.
 - **Reason:** An unexplained crash is unusable, while a silent replacement store could make existing Fieldnotes appear lost and allow new captures into the wrong durability context.
+
+## D-010 — Keep single-Fieldnote writes independent of collection size
+
+- **Date:** 2026-08-08
+- **Status:** Accepted
+- **Decision:** A save validates one proposed Fieldnote against aggregate archive usage instead of fetching or constructing the complete collection. SwiftData supplies the aggregate count through `fetchCount`; a V2 singleton stores total photo bytes and the encoded-size estimate in the same transaction as Fieldnote writes.
+- **Migration and reconciliation:** The V1-to-V2 migration computes the singleton once from the existing store. A missing singleton is reconciled at container creation, which is the known repair schedule; normal saves read only the count and singleton.
+- **Verification:** A repository boundary makes read cost observable. A deterministic test requires the same records-read and bytes-deserialized cost at 1,000 and 5,000 existing Fieldnotes. Repository AST checks reject direct unbounded `FetchDescriptor` construction and discarded builder-like results unless a deliberate walk is documented.
+- **Reason:** Capture cost must be proportional to the new Fieldnote, especially when photos use external storage. The same predicate surface is shared by archive construction and prospective-save validation so limit rules do not drift.

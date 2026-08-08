@@ -300,17 +300,23 @@ struct EntryEditorView: View {
     }
 
     private func loadPhoto(from item: PhotosPickerItem?) {
-        guard let item else {
-            photoSelection.cancelLibraryLoad()
-            return
-        }
+        guard let item else { return }
 
         let requestID = photoSelection.beginLibraryLoad()
 
         Task {
             do {
-                let data = try await item.loadTransferable(type: Data.self)
-                photoSelection.finishLibraryLoad(with: data, requestID: requestID)
+                guard let sourceData = try await item.loadTransferable(type: Data.self) else {
+                    photoSelection.failLibraryLoad(requestID: requestID)
+                    return
+                }
+                let normalizedData = try await Task.detached(priority: .userInitiated) {
+                    try PhotoProcessor.normalize(sourceData)
+                }.value
+                photoSelection.finishLibraryLoad(
+                    with: normalizedData,
+                    requestID: requestID
+                )
             } catch {
                 photoSelection.failLibraryLoad(requestID: requestID)
             }
@@ -320,7 +326,21 @@ struct EntryEditorView: View {
     private func acceptCapturedPhoto(_ data: Data) {
         photoSelection.cancelLibraryLoad()
         selectedPhotoItem = nil
-        photoSelection.selectCameraPhoto(data)
+        let requestID = photoSelection.beginLibraryLoad()
+
+        Task {
+            do {
+                let normalizedData = try await Task.detached(priority: .userInitiated) {
+                    try PhotoProcessor.normalize(data)
+                }.value
+                photoSelection.finishLibraryLoad(
+                    with: normalizedData,
+                    requestID: requestID
+                )
+            } catch {
+                photoSelection.failLibraryLoad(requestID: requestID)
+            }
+        }
     }
 
     private func clearSelectedPhoto() {
@@ -604,7 +624,7 @@ struct CameraPicker: UIViewControllerRepresentable {
 
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
             if let image = info[.originalImage] as? UIImage,
-               let data = image.jpegData(compressionQuality: 0.86) {
+               let data = image.jpegData(compressionQuality: 0.92) {
                 onCapture(data)
             }
 

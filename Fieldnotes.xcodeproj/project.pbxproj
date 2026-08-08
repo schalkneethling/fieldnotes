@@ -23,6 +23,7 @@
 		9E3D4E5F6A7B8C9000000001 /* PreVersioningStore in Resources */ = {isa = PBXBuildFile; fileRef = 9E3D4E5F6A7B8C9000000011 /* PreVersioningStore */; };
 		9F3D4E5F6A7B8C9000000001 /* FieldnotesArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */; };
 		A03D4E5F6A7B8C9000000001 /* FieldnotesArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */; };
+		B13D4E5F6A7B8C9000000001 /* PhotoProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13D4E5F6A7B8C9000000011 /* PhotoProcessor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +55,7 @@
 		9E3D4E5F6A7B8C9000000011 /* PreVersioningStore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fixtures/PreVersioningStore; sourceTree = "<group>"; };
 		9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesArchive.swift; sourceTree = "<group>"; };
 		A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesArchiveTests.swift; sourceTree = "<group>"; };
+		B13D4E5F6A7B8C9000000011 /* PhotoProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoProcessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +132,7 @@
 				9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */,
 				9B3D4E5F6A7B8C9000000011 /* FieldnotePersistence.swift */,
 				9D3D4E5F6A7B8C9000000011 /* FieldnotesStore.swift */,
+				B13D4E5F6A7B8C9000000011 /* PhotoProcessor.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -266,6 +269,7 @@
 				9F3D4E5F6A7B8C9000000001 /* FieldnotesArchive.swift in Sources */,
 				9D3D4E5F6A7B8C9000000001 /* FieldnotesStore.swift in Sources */,
 				9D3D4E5F6A7B8C9000000002 /* StoreStartupView.swift in Sources */,
+				B13D4E5F6A7B8C9000000001 /* PhotoProcessor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -87,3 +87,11 @@ Statuses:
 - **Migration and reconciliation:** The V1-to-V2 migration computes the singleton once from the existing store. A missing singleton is reconciled at container creation, which is the known repair schedule; normal saves read only the count and singleton.
 - **Verification:** A repository boundary makes read cost observable. A deterministic test requires the same records-read and bytes-deserialized cost at 1,000 and 5,000 existing Fieldnotes. Repository AST checks reject direct unbounded `FetchDescriptor` construction and discarded builder-like results unless a deliberate walk is documented.
 - **Reason:** Capture cost must be proportional to the new Fieldnote, especially when photos use external storage. The same predicate surface is shared by archive construction and prospective-save validation so limit rules do not drift.
+
+## D-011 — Normalize newly captured photos before persistence
+
+- **Date:** 2026-08-08
+- **Status:** Accepted
+- **Decision:** Run camera and library images through one pre-persistence pipeline. Apply source orientation, cap the longest edge at 2,048 pixels, encode as JPEG, and reject any result that cannot be kept within 8 MiB.
+- **Boundary:** The rule applies to new captures. Archive restoration preserves historical photo bytes exactly so a portable backup remains lossless with respect to the exported Fieldnote.
+- **Reason:** A bounded stored representation keeps capture, retrieval, export, scrolling, and memory costs predictable without retaining unnecessarily large originals inside a lightweight Fieldnote.

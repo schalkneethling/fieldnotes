@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 import XCTest
 @testable import Fieldnotes
 
@@ -84,6 +85,40 @@ final class FieldnotePersistenceTests: XCTestCase {
         XCTAssertEqual(fetched.photoData, cameraPhotoData)
     }
 
+    func testPhotoProcessorBoundsDimensionsAndStoredBytes() throws {
+        let sourceImage = makeImage(size: CGSize(width: 2_500, height: 1_000))
+        let sourceData = try XCTUnwrap(sourceImage.pngData())
+
+        let normalizedData = try PhotoProcessor.normalize(sourceData)
+        let normalizedImage = try XCTUnwrap(UIImage(data: normalizedData))
+
+        XCTAssertLessThanOrEqual(
+            Int(max(normalizedImage.size.width, normalizedImage.size.height)),
+            PhotoProcessor.maximumPixelDimension
+        )
+        XCTAssertLessThanOrEqual(
+            normalizedData.count,
+            PhotoProcessor.maximumEncodedBytes
+        )
+    }
+
+    func testPhotoProcessorAppliesSourceOrientation() throws {
+        let sourceImage = makeImage(size: CGSize(width: 120, height: 60))
+        let sourceCGImage = try XCTUnwrap(sourceImage.cgImage)
+        let orientedImage = UIImage(
+            cgImage: sourceCGImage,
+            scale: 1,
+            orientation: .right
+        )
+        let sourceData = try XCTUnwrap(orientedImage.jpegData(compressionQuality: 1))
+
+        let normalizedData = try PhotoProcessor.normalize(sourceData)
+        let normalizedImage = try XCTUnwrap(UIImage(data: normalizedData))
+
+        XCTAssertEqual(normalizedImage.imageOrientation, .up)
+        XCTAssertEqual(normalizedImage.size, CGSize(width: 60, height: 120))
+    }
+
     func testSavingOneFieldnoteHasConstantReadCostAtBudgetScales() throws {
         let small = try measureSaveCost(seededFieldnoteCount: 1_000)
         let large = try measureSaveCost(seededFieldnoteCount: 5_000)
@@ -165,6 +200,16 @@ final class FieldnotePersistenceTests: XCTestCase {
             seededFieldnoteCount + 1
         )
         return recorder.readCost
+    }
+
+    private func makeImage(size: CGSize) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        return renderer.image { context in
+            UIColor.systemIndigo.setFill()
+            context.cgContext.fill(CGRect(origin: .zero, size: size))
+        }
     }
 }
 

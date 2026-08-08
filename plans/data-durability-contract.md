@@ -83,7 +83,7 @@ Fieldnotes does not create automatic or cloud backups, synchronize devices, sche
 - The V1 schema and model shape remain structurally frozen and pinned by tests. V2 adds transactional archive-usage metadata, and the checked-in pre-versioning store proves migration preserves every Fieldnote field and external photo data while backfilling that metadata.
 - Store initialization now has testable idle, opening, ready, timeout-recovery, and error-recovery paths. Injected failures prove that no fallback or overlapping container is created; controlled invalid-store and physical-device recovery checks remain.
 - There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
-- Library media is stored in its original representation and camera media is compressed without resizing.
+- New camera and library photos share a pre-persistence normalization pipeline: source orientation is applied, the longest edge is capped at 2,048 pixels, output is JPEG, and stored data is capped at 8 MiB. Physical-device verification with representative camera and library formats remains.
 - Manual JSON export and additive restoration are implemented with a 256 MiB cap. Capture and restore update aggregate archive usage transactionally, so a new save does not walk existing external photo data. Physical-device recovery and representative-library performance remain to be verified. Automatic backup and synchronization remain out of scope.
 - Review fetches the full collection and filters time ranges in memory.
 - Image decoding occurs from view rendering and has no explicit memory budget.

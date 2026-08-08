@@ -132,6 +132,7 @@ enum FieldnotesArchiveError: LocalizedError {
     case totalPhotoDataTooLarge
     case duplicateIdentifier(UUID)
     case conflictingIdentifier(UUID)
+    case missingLocalUsageData
     case importRequiresValidatedReader
 
     var errorDescription: String? {
@@ -156,6 +157,8 @@ enum FieldnotesArchiveError: LocalizedError {
             "This archive contains the same Fieldnote more than once."
         case .conflictingIdentifier:
             "A Fieldnote in this archive conflicts with a different Fieldnote already on this device. Nothing was restored."
+        case .missingLocalUsageData:
+            "Fieldnotes could not verify local archive usage. Nothing was changed."
         case .importRequiresValidatedReader:
             "Fieldnotes archives must be imported through the validated restore flow."
         }
@@ -425,31 +428,91 @@ enum FieldnotesWriteSerialization {
     }
 }
 
+protocol FieldnotesArchiveUsageAccess {
+    func fetchUsageModel(key: String) throws -> FieldnotesArchiveUsageModel?
+    func fetchFieldnoteCount() throws -> Int
+    func enumerateFieldnotes(_ body: (Fieldnote) throws -> Void) throws
+    func insertUsageModel(_ model: FieldnotesArchiveUsageModel)
+    func save() throws
+}
+
+struct SwiftDataFieldnotesArchiveUsageAccess: FieldnotesArchiveUsageAccess {
+    let context: ModelContext
+
+    func fetchUsageModel(key: String) throws -> FieldnotesArchiveUsageModel? {
+        var descriptor = FetchDescriptor<FieldnotesArchiveUsageModel>(
+            predicate: #Predicate { $0.key == key }
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+
+    func fetchFieldnoteCount() throws -> Int {
+        try context.fetchCount(FetchDescriptor<Fieldnote>())
+    }
+
+    func enumerateFieldnotes(_ body: (Fieldnote) throws -> Void) throws {
+        var descriptor = FetchDescriptor<Fieldnote>()
+        descriptor.propertiesToFetch = [
+            \Fieldnote.id,
+            \Fieldnote.createdAt,
+            \Fieldnote.text,
+            \Fieldnote.emoji,
+            \Fieldnote.photoData
+        ]
+        try context.enumerate(descriptor, batchSize: 100, block: body)
+    }
+
+    func insertUsageModel(_ model: FieldnotesArchiveUsageModel) {
+        context.insert(model)
+    }
+
+    func save() throws {
+        try context.save()
+    }
+}
+
 enum FieldnotesArchiveUsageRepository {
     private static let singletonKey = "version-1"
 
     static func ensurePresent(in context: ModelContext) throws {
-        guard try model(in: context) == nil else { return }
-        guard try context.fetchCount(FetchDescriptor<Fieldnote>()) > 0 else {
+        try ensurePresent(using: SwiftDataFieldnotesArchiveUsageAccess(context: context))
+    }
+
+    static func ensurePresent(using access: any FieldnotesArchiveUsageAccess) throws {
+        guard try model(using: access) == nil else { return }
+        guard try access.fetchFieldnoteCount() > 0 else {
             let usage = FieldnotesArchiveUsage.empty
-            context.insert(
+            access.insertUsageModel(
                 FieldnotesArchiveUsageModel(
                     key: singletonKey,
                     totalPhotoBytes: usage.totalPhotoBytes,
                     estimatedArchiveBytes: usage.estimatedArchiveBytes
                 )
             )
-            try context.save()
+            try access.save()
             return
         }
-        try reconcile(in: context)
+        try reconcile(using: access)
     }
 
     static func current(in context: ModelContext) throws -> FieldnotesArchiveUsage {
-        try ensurePresent(in: context)
-        let storedUsage = try requiredModel(in: context)
+        try current(using: SwiftDataFieldnotesArchiveUsageAccess(context: context))
+    }
+
+    static func current(
+        using access: any FieldnotesArchiveUsageAccess
+    ) throws -> FieldnotesArchiveUsage {
+        let storedUsage: FieldnotesArchiveUsageModel
+        if let existing = try model(using: access) {
+            storedUsage = existing
+        } else {
+            try ensurePresent(using: access)
+            storedUsage = try requiredModel(using: access)
+        }
+        let fieldnoteCount = try access.fetchFieldnoteCount()
         return FieldnotesArchiveUsage(
-            fieldnoteCount: try context.fetchCount(FetchDescriptor<Fieldnote>()),
+            fieldnoteCount: fieldnoteCount,
             totalPhotoBytes: storedUsage.totalPhotoBytes,
             estimatedArchiveBytes: storedUsage.estimatedArchiveBytes
         )
@@ -459,33 +522,40 @@ enum FieldnotesArchiveUsageRepository {
         _ usage: FieldnotesArchiveUsage,
         in context: ModelContext
     ) throws {
-        let storedUsage = try requiredModel(in: context)
+        try update(
+            usage,
+            using: SwiftDataFieldnotesArchiveUsageAccess(context: context)
+        )
+    }
+
+    static func update(
+        _ usage: FieldnotesArchiveUsage,
+        using access: any FieldnotesArchiveUsageAccess
+    ) throws {
+        try ensurePresent(using: access)
+        let storedUsage = try requiredModel(using: access)
         storedUsage.totalPhotoBytes = usage.totalPhotoBytes
         storedUsage.estimatedArchiveBytes = usage.estimatedArchiveBytes
     }
 
     static func reconcile(in context: ModelContext) throws {
+        try reconcile(using: SwiftDataFieldnotesArchiveUsageAccess(context: context))
+    }
+
+    static func reconcile(using access: any FieldnotesArchiveUsageAccess) throws {
         var usage = FieldnotesArchiveUsage.empty
-        var descriptor = FetchDescriptor<Fieldnote>()
-        descriptor.propertiesToFetch = [
-            \Fieldnote.id,
-            \Fieldnote.createdAt,
-            \Fieldnote.text,
-            \Fieldnote.emoji,
-            \Fieldnote.photoData
-        ]
-        try context.enumerate(descriptor, batchSize: 100) { fieldnote in
+        try access.enumerateFieldnotes { fieldnote in
             usage = try FieldnotesArchiveCodec.measure(
                 FieldnotesArchiveRecord(fieldnote: fieldnote),
                 addingTo: usage
             )
         }
 
-        if let storedUsage = try model(in: context) {
+        if let storedUsage = try model(using: access) {
             storedUsage.totalPhotoBytes = usage.totalPhotoBytes
             storedUsage.estimatedArchiveBytes = usage.estimatedArchiveBytes
         } else {
-            context.insert(
+            access.insertUsageModel(
                 FieldnotesArchiveUsageModel(
                     key: singletonKey,
                     totalPhotoBytes: usage.totalPhotoBytes,
@@ -493,27 +563,22 @@ enum FieldnotesArchiveUsageRepository {
                 )
             )
         }
-        try context.save()
+        try access.save()
     }
 
     private static func requiredModel(
-        in context: ModelContext
+        using access: any FieldnotesArchiveUsageAccess
     ) throws -> FieldnotesArchiveUsageModel {
-        guard let model = try model(in: context) else {
-            throw FieldnotesArchiveError.invalidArchive
+        guard let model = try model(using: access) else {
+            throw FieldnotesArchiveError.missingLocalUsageData
         }
         return model
     }
 
     private static func model(
-        in context: ModelContext
+        using access: any FieldnotesArchiveUsageAccess
     ) throws -> FieldnotesArchiveUsageModel? {
-        let key = singletonKey
-        var descriptor = FetchDescriptor<FieldnotesArchiveUsageModel>(
-            predicate: #Predicate { $0.key == key }
-        )
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
+        try access.fetchUsageModel(key: singletonKey)
     }
 }
 
@@ -531,10 +596,13 @@ actor FieldnotesArchiveStore {
         return try modelContext.fetch(descriptor).map(FieldnotesArchiveRecord.init)
     }
 
-    func previewRestore(_ archive: FieldnotesArchive) throws -> FieldnotesRestorePreview {
-        try FieldnotesArchiveCodec.validate(archive)
+    func previewRestore(
+        _ archive: FieldnotesArchive,
+        limits: FieldnotesArchiveLimits = .version1
+    ) throws -> FieldnotesRestorePreview {
+        try FieldnotesArchiveCodec.validate(archive, limits: limits)
         modelContext.autosaveEnabled = false
-        let classification = try classify(archive)
+        let classification = try classify(archive, limits: limits)
         return FieldnotesRestorePreview(
             fieldnoteCount: archive.fieldnotes.count,
             newFieldnoteCount: classification.missing.count,
@@ -544,12 +612,13 @@ actor FieldnotesArchiveStore {
 
     func restore(
         _ archive: FieldnotesArchive,
+        limits: FieldnotesArchiveLimits = .version1,
         save: ContextSaver = { try $0.save() }
     ) throws -> FieldnotesRestoreResult {
-        try FieldnotesArchiveCodec.validate(archive)
+        try FieldnotesArchiveCodec.validate(archive, limits: limits)
         return try FieldnotesWriteSerialization.withLock {
             modelContext.autosaveEnabled = false
-            let classification = try classify(archive)
+            let classification = try classify(archive, limits: limits)
             guard !classification.missing.isEmpty else {
                 return FieldnotesRestoreResult(
                     addedFieldnoteCount: 0,
@@ -559,14 +628,7 @@ actor FieldnotesArchiveStore {
 
             do {
                 for record in classification.missing {
-                    let fieldnote = Fieldnote(
-                        text: record.text,
-                        emoji: record.emoji,
-                        photoData: record.photoData,
-                        createdAt: Date(timeIntervalSince1970: record.createdAtUnixSeconds)
-                    )
-                    fieldnote.id = record.id
-                    modelContext.insert(fieldnote)
+                    modelContext.insert(Fieldnote(record: record))
                 }
                 try FieldnotesArchiveUsageRepository.update(
                     classification.updatedUsage,
@@ -586,7 +648,8 @@ actor FieldnotesArchiveStore {
     }
 
     private func classify(
-        _ archive: FieldnotesArchive
+        _ archive: FieldnotesArchive,
+        limits: FieldnotesArchiveLimits
     ) throws -> (
         missing: [FieldnotesArchiveRecord],
         existingCount: Int,
@@ -594,7 +657,10 @@ actor FieldnotesArchiveStore {
     ) {
         // ast-grep-ignore: unbounded-fetch-descriptor -- restore compares archive IDs against the complete local collection deliberately.
         let existing = try modelContext.fetch(FetchDescriptor<Fieldnote>())
-        let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        var existingByID: [UUID: Fieldnote] = [:]
+        for fieldnote in existing where existingByID[fieldnote.id] == nil {
+            existingByID[fieldnote.id] = fieldnote
+        }
         var missing: [FieldnotesArchiveRecord] = []
         var existingCount = 0
 
@@ -615,7 +681,7 @@ actor FieldnotesArchiveStore {
                 record,
                 addingTo: updatedUsage,
                 exportedAt: Date(timeIntervalSince1970: 0),
-                limits: .version1
+                limits: limits
             )
         }
 

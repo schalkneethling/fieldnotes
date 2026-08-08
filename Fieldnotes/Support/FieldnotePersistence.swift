@@ -62,27 +62,34 @@ actor FieldnotePersistenceStore {
     }
 }
 
-private struct SwiftDataFieldnotePersistenceRepository: FieldnotePersistenceRepository {
+struct SwiftDataFieldnotePersistenceRepository: FieldnotePersistenceRepository {
     let context: ModelContext
+    let usageAccess: any FieldnotesArchiveUsageAccess
+
+    init(
+        context: ModelContext,
+        usageAccess: (any FieldnotesArchiveUsageAccess)? = nil
+    ) {
+        self.context = context
+        self.usageAccess = usageAccess
+            ?? SwiftDataFieldnotesArchiveUsageAccess(context: context)
+    }
 
     func persist(
         _ record: FieldnotesArchiveRecord,
         validatingUsage: (FieldnotesArchiveUsage) throws -> FieldnotesArchiveUsage
     ) throws {
         try FieldnotesWriteSerialization.withLock {
+            context.autosaveEnabled = false
             do {
                 let updatedUsage = try validatingUsage(
-                    FieldnotesArchiveUsageRepository.current(in: context)
+                    FieldnotesArchiveUsageRepository.current(using: usageAccess)
                 )
-                let fieldnote = Fieldnote(
-                    text: record.text,
-                    emoji: record.emoji,
-                    photoData: record.photoData,
-                    createdAt: Date(timeIntervalSince1970: record.createdAtUnixSeconds)
+                context.insert(Fieldnote(record: record))
+                try FieldnotesArchiveUsageRepository.update(
+                    updatedUsage,
+                    using: usageAccess
                 )
-                fieldnote.id = record.id
-                context.insert(fieldnote)
-                try FieldnotesArchiveUsageRepository.update(updatedUsage, in: context)
                 if context.hasChanges {
                     try context.save()
                 }

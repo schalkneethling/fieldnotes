@@ -2,9 +2,25 @@ id: discarded-construction
 valid:
   - _ = try save()
   - "let archive = try Builder.makeArchive(from: records)"
+  - "let archive = try? Builder.makeArchive(from: records)"
+  - "let archive = try! Builder.makeArchive(from: records)"
+  - "consume(try Builder.makeArchive(from: records))"
+  - consume(try? encode(value))
+  - "func make() throws -> Archive { return try Builder.makeArchive(from: records) }"
+  - "let loader = { try Builder.makeArchive(from: records) }"
+  - "let loader = { try await renderer.renderPreview() }"
+  - "try container.encode(value, forKey: .value)"
+  - "try container.encodeNil(forKey: .value)"
 invalid:
   - "_ = try Builder.makeArchive(from: records)"
   - _ = try encode(value)
   - _ = try await renderer.renderPreview()
   - _ = try builder?.makeArchive()
   - _ = try Builder<Fieldnote>.makeArchive()
+  - "try Builder.makeArchive(from: records)"
+  - try? encode(value)
+  - try! renderer.renderPreview()
+  - "func discard() throws { try Builder.makeArchive(from: records) }"
+  - "func discard() { try? encode(value) }"
+  - "func discard() { try! renderer.renderPreview() }"
+  - "func discard() async throws { try await renderer.renderPreview() }"

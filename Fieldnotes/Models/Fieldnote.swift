@@ -35,12 +35,28 @@ enum FieldnotesSchemaV2: VersionedSchema {
         var emoji: String?
         @Attribute(.externalStorage) var photoData: Data?
 
-        init(text: String, emoji: String? = nil, photoData: Data? = nil, createdAt: Date = Date()) {
-            self.id = UUID()
+        init(
+            id: UUID = UUID(),
+            text: String,
+            emoji: String? = nil,
+            photoData: Data? = nil,
+            createdAt: Date = Date()
+        ) {
+            self.id = id
             self.createdAt = createdAt
             self.text = text
             self.emoji = emoji
             self.photoData = photoData
+        }
+
+        convenience init(record: FieldnotesArchiveRecord) {
+            self.init(
+                id: record.id,
+                text: record.text,
+                emoji: record.emoji,
+                photoData: record.photoData,
+                createdAt: Date(timeIntervalSince1970: record.createdAtUnixSeconds)
+            )
         }
     }
 

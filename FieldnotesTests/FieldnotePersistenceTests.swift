@@ -117,19 +117,53 @@ final class FieldnotePersistenceTests: XCTestCase {
     private func measureSaveCost(
         seededFieldnoteCount: Int
     ) throws -> PersistenceReadCost {
-        let repository = CountingFieldnotePersistenceRepository(
-            usage: FieldnotesArchiveUsage(
-                fieldnoteCount: seededFieldnoteCount,
-                totalPhotoBytes: 0,
-                estimatedArchiveBytes: 1_024 + (seededFieldnoteCount * 1_024)
+        let container = try FieldnotesStoreFactory.makeContainer(
+            configuration: ModelConfiguration(
+                schema: FieldnotesStoreFactory.schema,
+                isStoredInMemoryOnly: true
             )
+        )
+        do {
+            let seedContext = ModelContext(container)
+            seedContext.autosaveEnabled = false
+            for index in 0..<seededFieldnoteCount {
+                seedContext.insert(
+                    Fieldnote(
+                        text: "Seed \(index)",
+                        photoData: Data(
+                            repeating: UInt8(truncatingIfNeeded: index),
+                            count: 4_096
+                        )
+                    )
+                )
+            }
+            try seedContext.save()
+            try FieldnotesArchiveUsageRepository.reconcile(in: seedContext)
+        }
+
+        let context = ModelContext(container)
+        let recorder = PersistenceReadRecorder()
+        let measuredAccess = MeasuringArchiveUsageAccess(
+            base: SwiftDataFieldnotesArchiveUsageAccess(context: context),
+            recorder: recorder
+        )
+        let repository = SwiftDataFieldnotePersistenceRepository(
+            context: context,
+            usageAccess: measuredAccess
         )
         try FieldnotePersistenceOperation(repository: repository).save(
             text: "One more Fieldnote",
             emoji: nil,
-            photoData: Data([0x01])
+            photoData: Data([0x01]),
+            archiveLimits: .version1
         )
-        return repository.readCost
+
+        XCTAssertFalse(context.autosaveEnabled)
+        XCTAssertEqual(
+            try context.fetchCount(FetchDescriptor<Fieldnote>()),
+            seededFieldnoteCount + 1
+        )
+        return recorder.readCost
     }
 }
 
@@ -138,8 +172,7 @@ private struct PersistenceReadCost: Equatable {
     let bytesDeserialized: Int
 }
 
-private final class CountingFieldnotePersistenceRepository: FieldnotePersistenceRepository {
-    private let usage: FieldnotesArchiveUsage
+private final class PersistenceReadRecorder {
     private(set) var recordsRead = 0
     private(set) var bytesDeserialized = 0
 
@@ -150,17 +183,61 @@ private final class CountingFieldnotePersistenceRepository: FieldnotePersistence
         )
     }
 
-    init(usage: FieldnotesArchiveUsage) {
-        self.usage = usage
+    func recordUsageModel(_ usage: FieldnotesArchiveUsageModel) {
+        record(bytes: usage.key.utf8.count + (2 * MemoryLayout<Int>.size))
     }
 
-    func persist(
-        _: FieldnotesArchiveRecord,
-        validatingUsage: (FieldnotesArchiveUsage) throws -> FieldnotesArchiveUsage
-    ) throws {
+    func recordFieldnoteCount(_: Int) {
+        record(bytes: MemoryLayout<Int>.size)
+    }
+
+    func recordFieldnote(_ fieldnote: Fieldnote) {
+        record(
+            bytes: MemoryLayout<UUID>.size
+                + MemoryLayout<Date>.size
+                + fieldnote.text.utf8.count
+                + (fieldnote.emoji?.utf8.count ?? 0)
+                + (fieldnote.photoData?.count ?? 0)
+        )
+    }
+
+    private func record(bytes: Int) {
         recordsRead += 1
-        bytesDeserialized += MemoryLayout<FieldnotesArchiveUsage>.size
-        _ = try validatingUsage(usage)
+        bytesDeserialized += bytes
+    }
+}
+
+private struct MeasuringArchiveUsageAccess: FieldnotesArchiveUsageAccess {
+    let base: any FieldnotesArchiveUsageAccess
+    let recorder: PersistenceReadRecorder
+
+    func fetchUsageModel(key: String) throws -> FieldnotesArchiveUsageModel? {
+        let usage = try base.fetchUsageModel(key: key)
+        if let usage {
+            recorder.recordUsageModel(usage)
+        }
+        return usage
+    }
+
+    func fetchFieldnoteCount() throws -> Int {
+        let count = try base.fetchFieldnoteCount()
+        recorder.recordFieldnoteCount(count)
+        return count
+    }
+
+    func enumerateFieldnotes(_ body: (Fieldnote) throws -> Void) throws {
+        try base.enumerateFieldnotes { fieldnote in
+            recorder.recordFieldnote(fieldnote)
+            try body(fieldnote)
+        }
+    }
+
+    func insertUsageModel(_ model: FieldnotesArchiveUsageModel) {
+        base.insertUsageModel(model)
+    }
+
+    func save() throws {
+        try base.save()
     }
 }
 

@@ -5,6 +5,8 @@ rule:
   any:
     - pattern: $CONTEXT.fetch(FetchDescriptor<$MODEL>())
     - pattern: '$CONTEXT.fetch(FetchDescriptor<$MODEL>(sortBy: $SORT))'
+    - pattern: '$CONTEXT.fetch(FetchDescriptor<$MODEL>(predicate: nil))'
+    - pattern: '$CONTEXT.fetch(FetchDescriptor<$MODEL>(predicate: nil, sortBy: $SORT))'
 message: >-
   An inline FetchDescriptor with no predicate fetches the entire store because
   there is no opportunity to set fetchLimit. If you need an aggregate, use

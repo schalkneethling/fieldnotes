@@ -292,12 +292,19 @@ final class FieldnotesArchiveTests: XCTestCase {
         let first = makeRecord(text: "First", emoji: "🌱", photoData: Data(repeating: 0xAB, count: 1_024))
         let second = makeRecord(text: "Second", emoji: nil, photoData: nil)
         let archive = try FieldnotesArchiveCodec.makeArchive(from: [second, first])
+        let firstOnlyArchive = try FieldnotesArchiveCodec.makeArchive(from: [first])
 
         let archiveStore = FieldnotesArchiveStore(modelContainer: container)
-        let firstResult = try await archiveStore.restore(archive)
+        let firstResult = try await archiveStore.restore(firstOnlyArchive)
+        let preview = try await archiveStore.previewRestore(archive)
+        let completionResult = try await archiveStore.restore(archive)
         let secondResult = try await archiveStore.restore(archive)
 
-        XCTAssertEqual(firstResult, FieldnotesRestoreResult(addedFieldnoteCount: 2, existingFieldnoteCount: 0))
+        XCTAssertEqual(firstResult, FieldnotesRestoreResult(addedFieldnoteCount: 1, existingFieldnoteCount: 0))
+        XCTAssertEqual(preview.fieldnoteCount, 2)
+        XCTAssertEqual(preview.newFieldnoteCount, 1)
+        XCTAssertEqual(preview.existingFieldnoteCount, 1)
+        XCTAssertEqual(completionResult, FieldnotesRestoreResult(addedFieldnoteCount: 1, existingFieldnoteCount: 1))
         XCTAssertEqual(secondResult, FieldnotesRestoreResult(addedFieldnoteCount: 0, existingFieldnoteCount: 2))
 
         let verificationContext = ModelContext(container)
@@ -314,6 +321,48 @@ final class FieldnotesArchiveTests: XCTestCase {
         XCTAssertEqual(
             usage.totalPhotoBytes,
             (first.photoData?.count ?? 0) + (second.photoData?.count ?? 0)
+        )
+    }
+
+    func testRestoreLimitFailureLeavesFieldnotesAndUsageUnchanged() async throws {
+        let tinyLimits = FieldnotesArchiveLimits(
+            maximumArchiveBytes: 4_096,
+            maximumFieldnoteCount: 2,
+            maximumTextBytes: 20,
+            maximumPhotoBytes: 3,
+            maximumTotalPhotoBytes: 3
+        )
+        let persistence = FieldnotePersistenceStore(modelContainer: container)
+        let existingID = try await persistence.save(
+            text: "Existing",
+            emoji: nil,
+            photoData: Data([1, 2]),
+            archiveLimits: tinyLimits
+        )
+        let usageBefore = try FieldnotesArchiveUsageRepository.current(
+            in: ModelContext(container)
+        )
+        let archive = try FieldnotesArchiveCodec.makeArchive(
+            from: [makeRecord(text: "New", photoData: Data([3, 4]))]
+        )
+
+        let archiveStore = FieldnotesArchiveStore(modelContainer: container)
+        do {
+            _ = try await archiveStore.restore(archive, limits: tinyLimits)
+            XCTFail("Expected archive capacity error")
+        } catch {
+            guard case FieldnotesArchiveError.totalPhotoDataTooLarge = error else {
+                return XCTFail("Expected total-photo error, got \(error)")
+            }
+        }
+
+        let verificationContext = ModelContext(container)
+        // ast-grep-ignore: unbounded-fetch-descriptor -- rollback verification inspects the complete one-record fixture.
+        let fieldnotes = try verificationContext.fetch(FetchDescriptor<Fieldnote>())
+        XCTAssertEqual(fieldnotes.map(\.id), [existingID])
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: verificationContext),
+            usageBefore
         )
     }
 

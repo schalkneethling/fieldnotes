@@ -111,6 +111,34 @@ final class FieldnotesStoreTests: XCTestCase {
         )
         XCTAssertEqual(usage.fieldnoteCount, 1)
         XCTAssertEqual(usage.totalPhotoBytes, 262_144)
+        XCTAssertGreaterThan(usage.estimatedArchiveBytes, usage.totalPhotoBytes)
+        XCTAssertLessThan(usage.estimatedArchiveBytes, 1 * 1_024 * 1_024)
+    }
+
+    func testUsageUpdateCreatesMissingLocalUsageRow() throws {
+        let configuration = ModelConfiguration(
+            schema: FieldnotesStoreFactory.schema,
+            isStoredInMemoryOnly: true
+        )
+        let rawContainer = try ModelContainer(
+            for: FieldnotesStoreFactory.schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(rawContainer)
+        context.autosaveEnabled = false
+        let expected = FieldnotesArchiveUsage(
+            fieldnoteCount: 0,
+            totalPhotoBytes: 2,
+            estimatedArchiveBytes: 2_048
+        )
+
+        try FieldnotesArchiveUsageRepository.update(expected, in: context)
+        try context.save()
+
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: context),
+            expected
+        )
     }
 
     func testDiagnosticsPreserveSafeUnderlyingCodesAndRedactPrivateDetails() {

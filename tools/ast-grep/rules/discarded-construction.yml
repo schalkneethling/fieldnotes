@@ -2,7 +2,28 @@ id: discarded-construction
 language: swift
 severity: error
 rule:
-  pattern: _ = try $EXPR
+  any:
+    - pattern: _ = try $EXPR
+    - all:
+        - any:
+            - pattern: try $EXPR
+            - pattern: try? $EXPR
+            - pattern: try! $EXPR
+        - any:
+            - inside:
+                kind: statements
+                stopBy: neighbor
+            - inside:
+                kind: source_file
+                stopBy: neighbor
+        - not:
+            inside:
+              pattern: '{ try $IMPLICIT_RESULT }'
+              stopBy: end
+        - not:
+            any:
+              - pattern: try $RECEIVER.encode($$$ARGS)
+              - pattern: try $RECEIVER.encodeNil($$$ARGS)
 constraints:
   EXPR:
     regex: '(?s)^(?:await\s+)?(?:[A-Za-z_][A-Za-z0-9_]*(?:<[^>]+>)?\??\.)*(?:make|build|encode|render)[A-Za-z0-9_]*\(.*\)$'

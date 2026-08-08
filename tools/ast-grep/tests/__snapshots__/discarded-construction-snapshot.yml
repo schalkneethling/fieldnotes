@@ -30,3 +30,73 @@ snapshots:
       style: primary
       start: 0
       end: 21
+  func discard() async throws { try await renderer.renderPreview() }:
+    labels:
+    - source: try await renderer.renderPreview()
+      style: primary
+      start: 30
+      end: 64
+    - source: try await renderer.renderPreview()
+      style: secondary
+      start: 30
+      end: 64
+  'func discard() throws { try Builder.makeArchive(from: records) }':
+    labels:
+    - source: 'try Builder.makeArchive(from: records)'
+      style: primary
+      start: 24
+      end: 62
+    - source: 'try Builder.makeArchive(from: records)'
+      style: secondary
+      start: 24
+      end: 62
+  func discard() { try! renderer.renderPreview() }:
+    labels:
+    - source: try! renderer.renderPreview()
+      style: primary
+      start: 17
+      end: 46
+    - source: try! renderer.renderPreview()
+      style: secondary
+      start: 17
+      end: 46
+  func discard() { try? encode(value) }:
+    labels:
+    - source: try? encode(value)
+      style: primary
+      start: 17
+      end: 35
+    - source: try? encode(value)
+      style: secondary
+      start: 17
+      end: 35
+  'try Builder.makeArchive(from: records)':
+    labels:
+    - source: 'try Builder.makeArchive(from: records)'
+      style: primary
+      start: 0
+      end: 38
+    - source: 'try Builder.makeArchive(from: records)'
+      style: secondary
+      start: 0
+      end: 38
+  try! renderer.renderPreview():
+    labels:
+    - source: try! renderer.renderPreview()
+      style: primary
+      start: 0
+      end: 29
+    - source: try! renderer.renderPreview()
+      style: secondary
+      start: 0
+      end: 29
+  try? encode(value):
+    labels:
+    - source: try? encode(value)
+      style: primary
+      start: 0
+      end: 18
+    - source: try? encode(value)
+      style: secondary
+      start: 0
+      end: 18

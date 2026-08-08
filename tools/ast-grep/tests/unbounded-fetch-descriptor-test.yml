@@ -9,3 +9,5 @@ valid:
 invalid:
   - context.fetch(FetchDescriptor<Fieldnote>())
   - 'context.fetch(FetchDescriptor<Fieldnote>(sortBy: []))'
+  - 'context.fetch(FetchDescriptor<Fieldnote>(predicate: nil))'
+  - 'context.fetch(FetchDescriptor<Fieldnote>(predicate: nil, sortBy: []))'

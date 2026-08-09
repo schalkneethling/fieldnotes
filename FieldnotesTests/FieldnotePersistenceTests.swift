@@ -62,6 +62,108 @@ final class FieldnotePersistenceTests: XCTestCase {
         XCTAssertEqual(Set(fetched.map(\.id)).count, 2)
     }
 
+    func testSaveSurvivesContainerDestructionAndReopen() async throws {
+        let directory = try makeTemporaryStoreDirectory()
+        let configuration = ModelConfiguration(
+            schema: FieldnotesStoreFactory.schema,
+            url: directory.appendingPathComponent("fieldnotes.store")
+        )
+        let createdAt = Date(timeIntervalSince1970: 1_900_000_000)
+        let photoData = Data([0x46, 0x49, 0x45, 0x4C, 0x44])
+        let savedID = try await saveFieldnote(
+            in: configuration,
+            text: "Available after relaunch.",
+            emoji: "🌙",
+            photoData: photoData,
+            createdAt: createdAt
+        )
+
+        let reopenedContainer = try FieldnotesStoreFactory.makeContainer(
+            configuration: configuration
+        )
+        let context = ModelContext(reopenedContainer)
+        let descriptor = FetchDescriptor<Fieldnote>(
+            predicate: #Predicate { $0.id == savedID }
+        )
+        let fieldnote = try XCTUnwrap(context.fetch(descriptor).only)
+
+        XCTAssertEqual(fieldnote.createdAt, createdAt)
+        XCTAssertEqual(fieldnote.text, "Available after relaunch.")
+        XCTAssertEqual(fieldnote.emoji, "🌙")
+        XCTAssertEqual(fieldnote.photoData, photoData)
+    }
+
+    func testNewestFirstRetrievalUsesStableIdentifierTieBreakerExactlyOnce() async throws {
+        let persistence = FieldnotePersistenceStore(modelContainer: container)
+        let oldID = try await persistence.save(
+            text: "Old",
+            emoji: nil,
+            photoData: nil,
+            createdAt: Date(timeIntervalSince1970: 100)
+        )
+        let firstTiedID = try await persistence.save(
+            text: "Tied first",
+            emoji: nil,
+            photoData: nil,
+            createdAt: Date(timeIntervalSince1970: 200)
+        )
+        let newestID = try await persistence.save(
+            text: "Newest",
+            emoji: nil,
+            photoData: nil,
+            createdAt: Date(timeIntervalSince1970: 300)
+        )
+        let secondTiedID = try await persistence.save(
+            text: "Tied second",
+            emoji: nil,
+            photoData: nil,
+            createdAt: Date(timeIntervalSince1970: 200)
+        )
+        let tiedIDs = [firstTiedID, secondTiedID].sorted {
+            $0.uuidString < $1.uuidString
+        }
+
+        let context = ModelContext(container)
+        let fetchedIDs = try context.fetch(
+            FieldnoteRetrieval.newestFirstDescriptor()
+        ).map(\.id)
+
+        XCTAssertEqual(fetchedIDs, [newestID] + tiedIDs + [oldID])
+        XCTAssertEqual(fetchedIDs.count, 4)
+        XCTAssertEqual(Set(fetchedIDs).count, 4)
+    }
+
+    func testSaveFailureRollsBackFieldnoteAndArchiveUsage() throws {
+        enum TestError: Error { case saveFailed }
+
+        let context = ModelContext(container)
+        let repository = SwiftDataFieldnotePersistenceRepository(
+            context: context,
+            save: { _ in throw TestError.saveFailed }
+        )
+
+        XCTAssertThrowsError(
+            try FieldnotePersistenceOperation(repository: repository).save(
+                text: "Must not persist",
+                emoji: "🫥",
+                photoData: Data([0x01, 0x02, 0x03])
+            )
+        ) { error in
+            XCTAssertEqual(error as? TestError, .saveFailed)
+        }
+        XCTAssertFalse(context.hasChanges)
+
+        let verificationContext = ModelContext(container)
+        XCTAssertEqual(
+            try verificationContext.fetchCount(FetchDescriptor<Fieldnote>()),
+            0
+        )
+        XCTAssertEqual(
+            try FieldnotesArchiveUsageRepository.current(in: verificationContext),
+            .empty
+        )
+    }
+
     func testCameraCaptureSupersedesPendingLibraryPhotoBeforeSave() async throws {
         let libraryPhotoData = Data("library".utf8)
         let cameraPhotoData = Data("camera".utf8)
@@ -318,6 +420,38 @@ final class FieldnotePersistenceTests: XCTestCase {
             seededFieldnoteCount + 1
         )
         return recorder.readCost
+    }
+
+    private func makeTemporaryStoreDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        return directory
+    }
+
+    private func saveFieldnote(
+        in configuration: ModelConfiguration,
+        text: String,
+        emoji: String?,
+        photoData: Data?,
+        createdAt: Date
+    ) async throws -> UUID {
+        let container = try FieldnotesStoreFactory.makeContainer(
+            configuration: configuration
+        )
+        let persistence = FieldnotePersistenceStore(modelContainer: container)
+        return try await persistence.save(
+            text: text,
+            emoji: emoji,
+            photoData: photoData,
+            createdAt: createdAt
+        )
     }
 
     private func makeImage(size: CGSize) -> UIImage {

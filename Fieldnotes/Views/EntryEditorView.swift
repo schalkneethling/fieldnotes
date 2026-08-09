@@ -5,6 +5,51 @@ import SwiftData
 import SwiftUI
 import UIKit
 
+struct FieldnoteSaveAction {
+    typealias Operation = @MainActor (
+        _ container: ModelContainer,
+        _ text: String,
+        _ emoji: String?,
+        _ photoData: Data?
+    ) async throws -> UUID
+
+    let operation: Operation
+
+    init(operation: @escaping Operation) {
+        self.operation = operation
+    }
+
+    @MainActor
+    func callAsFunction(
+        container: ModelContainer,
+        text: String,
+        emoji: String?,
+        photoData: Data?
+    ) async throws -> UUID {
+        try await operation(container, text, emoji, photoData)
+    }
+
+    static let live = FieldnoteSaveAction { container, text, emoji, photoData in
+        let persistence = FieldnotePersistenceStore(modelContainer: container)
+        return try await persistence.save(
+            text: text,
+            emoji: emoji,
+            photoData: photoData
+        )
+    }
+}
+
+private struct FieldnoteSaveActionKey: EnvironmentKey {
+    static let defaultValue = FieldnoteSaveAction.live
+}
+
+extension EnvironmentValues {
+    var fieldnoteSaveAction: FieldnoteSaveAction {
+        get { self[FieldnoteSaveActionKey.self] }
+        set { self[FieldnoteSaveActionKey.self] = newValue }
+    }
+}
+
 struct EmotionOption: Identifiable, Hashable {
     let id: String
     let emoji: String
@@ -113,6 +158,7 @@ struct PhotoSelectionState {
 
 struct EntryEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.fieldnoteSaveAction) private var saveAction
     @Environment(\.modelContext) private var modelContext
 
     @State private var noteText = ""
@@ -381,8 +427,8 @@ struct EntryEditorView: View {
 
         Task { @MainActor in
             do {
-                let persistence = FieldnotePersistenceStore(modelContainer: modelContext.container)
-                _ = try await persistence.save(
+                _ = try await saveAction(
+                    container: modelContext.container,
                     text: trimmedNote,
                     emoji: selectedEmoji,
                     photoData: photoSelection.data

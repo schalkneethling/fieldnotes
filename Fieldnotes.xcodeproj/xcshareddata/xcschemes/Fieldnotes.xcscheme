@@ -35,6 +35,20 @@
                ReferencedContainer = "container:Fieldnotes.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C23D4E5F6A7B8C9000000030"
+               BuildableName = "FieldnotesUITests.xctest"
+               BlueprintName = "FieldnotesUITests"
+               ReferencedContainer = "container:Fieldnotes.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -52,6 +66,17 @@
                BlueprintIdentifier = "9C3D4E5F6A7B8C9000000030"
                BuildableName = "FieldnotesTests.xctest"
                BlueprintName = "FieldnotesTests"
+               ReferencedContainer = "container:Fieldnotes.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C23D4E5F6A7B8C9000000030"
+               BuildableName = "FieldnotesUITests.xctest"
+               BlueprintName = "FieldnotesUITests"
                ReferencedContainer = "container:Fieldnotes.xcodeproj">
             </BuildableReference>
          </TestableReference>

@@ -1,7 +1,7 @@
 # TestFlight self-trial plan
 
 - **Status:** Active
-- **Last updated:** 2026-08-06
+- **Last updated:** 2026-08-09
 - **Trial owner and tester:** Project owner
 - **Trial device:** Primary physical trial device
 - **Repository baseline:** `0645be8` (`Initial Fieldnotes project`)
@@ -50,6 +50,9 @@ Reliability comes before a polished success animation: the app must never imply 
 ### 3. Comprehensive confidence and performance
 
 - [#11: Critical-flow and persistence test coverage](https://github.com/schalkneethling/fieldnotes/issues/11)
+- [#29: Critical Fieldnote domain policies](https://github.com/schalkneethling/fieldnotes/issues/29)
+- [#30: Persistence across relaunch and deterministic retrieval](https://github.com/schalkneethling/fieldnotes/issues/30)
+- [#31: Critical-flow UI automation](https://github.com/schalkneethling/fieldnotes/issues/31)
 - [#12: Physical-device permission and persistence matrix](https://github.com/schalkneethling/fieldnotes/issues/12)
 - [#20: Performance budgets and physical-device benchmarks](https://github.com/schalkneethling/fieldnotes/issues/20)
 

@@ -78,14 +78,14 @@ Fieldnotes does not create automatic or cloud backups, synchronize devices, sche
 
 ## Current gaps
 
-- Explicit throwing save and complete-Fieldnote integration tests are implemented in the first reliability slice; failure injection and UI coverage remain.
-- The save operation now has a repository seam for deterministic cost testing; save-failure injection and UI coverage remain incomplete.
+- Explicit throwing save and complete-Fieldnote integration tests are implemented. Injected save failure proves the Fieldnote and archive usage roll back, while UI automation proves the draft remains available and a retry can succeed.
+- The save operation has a repository seam for deterministic cost and failure testing. Disk-backed relaunch coverage verifies every saved field and photo after opening a fresh container.
 - The V1 schema and model shape remain structurally frozen and pinned by tests. V2 adds transactional archive-usage metadata, and the checked-in pre-versioning store proves migration preserves every Fieldnote field and external photo data while backfilling that metadata.
 - Store initialization now has testable idle, opening, ready, timeout-recovery, and error-recovery paths. Injected failures prove that no fallback or overlapping container is created; controlled invalid-store and physical-device recovery checks remain.
-- There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
+- Unit and UI-test targets cover domain rules, launch, text capture, save success and failure, draft retention, retrieval, relaunch, deletion confirmation and persistence, and startup recovery. Onboarding and permission automation remain dependent on #18; broader accessibility coverage remains.
 - New camera and library photos share a pre-persistence normalization pipeline: source orientation is applied, the longest edge is capped at 2,048 pixels, output uses one fixed JPEG quality of 0.82, and stored data is capped at 8 MiB without silent quality fallback. Capture discloses that Fieldnotes keeps an optimized copy rather than the original. Physical-device verification with representative camera and library formats remains.
 - Manual JSON export and additive restoration are implemented with a 256 MiB cap. Capture and restore update aggregate archive usage transactionally, so a new save does not walk existing external photo data. Physical-device recovery and representative-library performance remain to be verified. Automatic backup and synchronization remain out of scope.
-- Confirmed deletion now removes the Fieldnote and archive-usage metadata in one explicit non-autosaving transaction. Disk-reopen and injected-save-failure tests cover persistence and rollback; UI automation and physical-device relaunch verification remain.
+- Confirmed deletion removes the Fieldnote and archive-usage metadata in one explicit non-autosaving transaction. Disk-reopen, injected-save-failure, and UI tests cover confirmation, cancellation, persistence, and rollback; physical-device relaunch verification remains.
 - Review fetches the full collection and filters time ranges in memory.
 - Image decoding occurs from view rendering and has no explicit memory budget.
 

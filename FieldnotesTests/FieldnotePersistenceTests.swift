@@ -176,6 +176,89 @@ final class FieldnotePersistenceTests: XCTestCase {
         XCTAssertEqual(usage.totalPhotoBytes, 5)
     }
 
+    func testDeletePersistsRemovalAndUpdatesUsageAfterReopen() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let configuration = ModelConfiguration(
+            schema: FieldnotesStoreFactory.schema,
+            url: directory.appendingPathComponent("fieldnotes.store")
+        )
+        let deletedID: UUID
+        let retainedID: UUID
+
+        do {
+            let container = try FieldnotesStoreFactory.makeContainer(
+                configuration: configuration
+            )
+            let persistence = FieldnotePersistenceStore(modelContainer: container)
+            deletedID = try await persistence.save(
+                text: "Remove me",
+                emoji: "🍂",
+                photoData: Data(repeating: 0xAB, count: 4_096)
+            )
+            retainedID = try await persistence.save(
+                text: "Keep me",
+                emoji: nil,
+                photoData: Data([0x01, 0x02])
+            )
+
+            let deletion = FieldnoteDeletionStore(modelContainer: container)
+            try await deletion.delete(id: deletedID)
+        }
+
+        let reopenedContainer = try FieldnotesStoreFactory.makeContainer(
+            configuration: configuration
+        )
+        let verificationContext = ModelContext(reopenedContainer)
+        // ast-grep-ignore: unbounded-fetch-descriptor -- this two-record deletion fixture verifies the complete reopened store.
+        let fetched = try verificationContext.fetch(FetchDescriptor<Fieldnote>())
+        let usage = try FieldnotesArchiveUsageRepository.current(in: verificationContext)
+
+        XCTAssertEqual(fetched.map(\.id), [retainedID])
+        XCTAssertFalse(fetched.contains { $0.id == deletedID })
+        XCTAssertEqual(usage.fieldnoteCount, 1)
+        XCTAssertEqual(usage.totalPhotoBytes, 2)
+        XCTAssertFalse(verificationContext.hasChanges)
+    }
+
+    func testDeleteFailureRollsBackFieldnoteAndArchiveUsage() async throws {
+        enum TestError: Error { case saveFailed }
+
+        let persistence = FieldnotePersistenceStore(modelContainer: container)
+        let id = try await persistence.save(
+            text: "Still here",
+            emoji: "🌱",
+            photoData: Data([0x01, 0x02, 0x03])
+        )
+        let context = ModelContext(container)
+        let deletion = SwiftDataFieldnoteDeletionRepository(
+            context: context,
+            save: { _ in throw TestError.saveFailed }
+        )
+
+        XCTAssertThrowsError(try deletion.delete(id: id)) { error in
+            XCTAssertEqual(error as? TestError, .saveFailed)
+        }
+        XCTAssertFalse(context.hasChanges)
+
+        let verificationContext = ModelContext(container)
+        let descriptor = FetchDescriptor<Fieldnote>(
+            predicate: #Predicate { $0.id == id }
+        )
+        let usage = try FieldnotesArchiveUsageRepository.current(in: verificationContext)
+
+        XCTAssertEqual(try verificationContext.fetchCount(descriptor), 1)
+        XCTAssertEqual(usage.fieldnoteCount, 1)
+        XCTAssertEqual(usage.totalPhotoBytes, 3)
+    }
+
     private func measureSaveCost(
         seededFieldnoteCount: Int
     ) throws -> PersistenceReadCost {

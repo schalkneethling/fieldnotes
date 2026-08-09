@@ -1,7 +1,7 @@
 # Fieldnotes data-durability contract
 
 - **Status:** Active draft for the first internal trial
-- **Last updated:** 2026-08-06
+- **Last updated:** 2026-08-09
 - **Tracking:** [GitHub issue #21](https://github.com/schalkneethling/fieldnotes/issues/21)
 
 ## Purpose
@@ -85,6 +85,7 @@ Fieldnotes does not create automatic or cloud backups, synchronize devices, sche
 - There is now a unit-test target, but no comprehensive critical-flow or UI suite yet.
 - New camera and library photos share a pre-persistence normalization pipeline: source orientation is applied, the longest edge is capped at 2,048 pixels, output uses one fixed JPEG quality of 0.82, and stored data is capped at 8 MiB without silent quality fallback. Capture discloses that Fieldnotes keeps an optimized copy rather than the original. Physical-device verification with representative camera and library formats remains.
 - Manual JSON export and additive restoration are implemented with a 256 MiB cap. Capture and restore update aggregate archive usage transactionally, so a new save does not walk existing external photo data. Physical-device recovery and representative-library performance remain to be verified. Automatic backup and synchronization remain out of scope.
+- Confirmed deletion now removes the Fieldnote and archive-usage metadata in one explicit non-autosaving transaction. Disk-reopen and injected-save-failure tests cover persistence and rollback; UI automation and physical-device relaunch verification remain.
 - Review fetches the full collection and filters time ranges in memory.
 - Image decoding occurs from view rendering and has no explicit memory budget.
 

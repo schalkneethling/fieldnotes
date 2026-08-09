@@ -6,6 +6,7 @@ This directory is the durable project-planning home for Fieldnotes. It exists so
 
 - [TestFlight self-trial plan](testflight-self-trial.md) describes the active outcome, sequence, release gates, and handoff context.
 - [Decision log](decisions.md) records accepted, provisional, and open product or technical decisions.
+- [Stacked pull requests](stacked-pull-requests.md) defines when and how dependent changes are split, reviewed, updated, and merged.
 - [TestFlight readiness](../docs/testflight-readiness.md) is the enduring release-readiness checklist.
 - [GitHub Issues](https://github.com/schalkneethling/fieldnotes/issues) are authoritative for individual work-item status, priority, and completion.
 
@@ -18,6 +19,7 @@ This directory is the durable project-planning home for Fieldnotes. It exists so
 5. Include plan and decision updates in the same change as the implementation when practical.
 6. End substantial work with a short handoff note in the relevant issue: what changed, what was verified, and what remains.
 7. Never commit or push directly to `main`; use a `codex/` branch and merge through a pull request. GitHub branch protection enforces this for administrators as well as contributors.
+8. When work is delivered as a stacked pull request, follow `stacked-pull-requests.md` and state the stack order in every pull-request description.
 
 ## Starting a new Codex task
 

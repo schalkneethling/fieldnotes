@@ -24,6 +24,7 @@
 		9F3D4E5F6A7B8C9000000001 /* FieldnotesArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */; };
 		A03D4E5F6A7B8C9000000001 /* FieldnotesArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */; };
 		B13D4E5F6A7B8C9000000001 /* PhotoProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13D4E5F6A7B8C9000000011 /* PhotoProcessor.swift */; };
+		D13D4E5F6A7B8C9000000001 /* FieldnoteDomainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13D4E5F6A7B8C9000000011 /* FieldnoteDomainTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 		9F3D4E5F6A7B8C9000000011 /* FieldnotesArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesArchive.swift; sourceTree = "<group>"; };
 		A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnotesArchiveTests.swift; sourceTree = "<group>"; };
 		B13D4E5F6A7B8C9000000011 /* PhotoProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoProcessor.swift; sourceTree = "<group>"; };
+		D13D4E5F6A7B8C9000000011 /* FieldnoteDomainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldnoteDomainTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				9C3D4E5F6A7B8C9000000011 /* FieldnotePersistenceTests.swift */,
+				D13D4E5F6A7B8C9000000011 /* FieldnoteDomainTests.swift */,
 				A03D4E5F6A7B8C9000000011 /* FieldnotesArchiveTests.swift */,
 				9D3D4E5F6A7B8C9000000013 /* FieldnotesStoreTests.swift */,
 				9E3D4E5F6A7B8C9000000011 /* PreVersioningStore */,
@@ -278,6 +281,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9C3D4E5F6A7B8C9000000001 /* FieldnotePersistenceTests.swift in Sources */,
+				D13D4E5F6A7B8C9000000001 /* FieldnoteDomainTests.swift in Sources */,
 				A03D4E5F6A7B8C9000000001 /* FieldnotesArchiveTests.swift in Sources */,
 				9D3D4E5F6A7B8C9000000003 /* FieldnotesStoreTests.swift in Sources */,
 			);

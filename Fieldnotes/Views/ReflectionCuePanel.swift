@@ -25,7 +25,7 @@ struct ReflectionCuePanel: View {
         }
     }
 
-    private static func makeCues(for entries: [Fieldnote], range: EntryRange) -> [String] {
+    static func makeCues(for entries: [Fieldnote], range: EntryRange) -> [String] {
         guard !entries.isEmpty else {
             return ["No artifacts logged \(range.cuePeriod) yet."]
         }

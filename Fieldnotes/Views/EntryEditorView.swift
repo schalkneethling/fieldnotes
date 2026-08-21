@@ -27,6 +27,33 @@ private let emotionOptions: [EmotionOption] = [
     EmotionOption("❓", "Uncertainty")
 ]
 
+enum FieldnoteDraftPolicy {
+    static let maximumCharacterCount = 240
+
+    static func limitedText(_ text: String) -> String {
+        String(text.prefix(maximumCharacterCount))
+    }
+
+    static func textForPersistence(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func canSave(
+        text: String,
+        hasLibraryPhotoSelection: Bool,
+        photoSelection: PhotoSelectionState,
+        isSaving: Bool
+    ) -> Bool {
+        let isPhotoReady = if hasLibraryPhotoSelection {
+            photoSelection.isReady
+        } else {
+            !photoSelection.isLoading && photoSelection.errorMessage == nil
+        }
+
+        return !textForPersistence(text).isEmpty && isPhotoReady && !isSaving
+    }
+}
+
 struct PhotoSelectionState {
     private(set) var data: Data?
     private(set) var errorMessage: String?
@@ -99,22 +126,17 @@ struct EntryEditorView: View {
     @State private var dictationBaseText = ""
     @StateObject private var speechTranscriber = SpeechTranscriber()
 
-    private let characterLimit = 240
-
     private var trimmedNote: String {
-        noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        FieldnoteDraftPolicy.textForPersistence(noteText)
     }
 
     private var canSave: Bool {
-        !trimmedNote.isEmpty && isSelectedPhotoReady && !isSaving
-    }
-
-    private var isSelectedPhotoReady: Bool {
-        guard selectedPhotoItem != nil else {
-            return !photoSelection.isLoading
-                && photoSelection.errorMessage == nil
-        }
-        return photoSelection.isReady
+        FieldnoteDraftPolicy.canSave(
+            text: noteText,
+            hasLibraryPhotoSelection: selectedPhotoItem != nil,
+            photoSelection: photoSelection,
+            isSaving: isSaving
+        )
     }
 
     var body: some View {
@@ -165,9 +187,13 @@ struct EntryEditorView: View {
 
                 Spacer()
 
-                Text("\(noteText.count)/\(characterLimit)")
+                Text("\(noteText.count)/\(FieldnoteDraftPolicy.maximumCharacterCount)")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(noteText.count > characterLimit ? .red : .secondary)
+                    .foregroundStyle(
+                        noteText.count > FieldnoteDraftPolicy.maximumCharacterCount
+                            ? .red
+                            : .secondary
+                    )
             }
 
             ZStack(alignment: .topLeading) {
@@ -181,8 +207,8 @@ struct EntryEditorView: View {
                 TextEditor(text: $noteText)
                     .frame(minHeight: 190)
                     .onChange(of: noteText) { _, newValue in
-                        if newValue.count > characterLimit {
-                            noteText = String(newValue.prefix(characterLimit))
+                        if newValue.count > FieldnoteDraftPolicy.maximumCharacterCount {
+                            noteText = FieldnoteDraftPolicy.limitedText(newValue)
                         }
                     }
             }
@@ -393,7 +419,7 @@ struct EntryEditorView: View {
 
         let separator = dictationBaseText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : " "
         let combinedText = dictationBaseText + separator + transcript
-        noteText = String(combinedText.prefix(characterLimit))
+        noteText = FieldnoteDraftPolicy.limitedText(combinedText)
     }
 }
 

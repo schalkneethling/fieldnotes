@@ -220,11 +220,15 @@ final class FieldnotePersistenceTests: XCTestCase {
         // ast-grep-ignore: unbounded-fetch-descriptor -- this two-record deletion fixture verifies the complete reopened store.
         let fetched = try verificationContext.fetch(FetchDescriptor<Fieldnote>())
         let usage = try FieldnotesArchiveUsageRepository.current(in: verificationContext)
+        let retainedFieldnote = try XCTUnwrap(fetched.only)
+        let expectedUsage = try FieldnotesArchiveCodec.measure(
+            FieldnotesArchiveRecord(fieldnote: retainedFieldnote),
+            addingTo: .empty
+        )
 
         XCTAssertEqual(fetched.map(\.id), [retainedID])
         XCTAssertFalse(fetched.contains { $0.id == deletedID })
-        XCTAssertEqual(usage.fieldnoteCount, 1)
-        XCTAssertEqual(usage.totalPhotoBytes, 2)
+        XCTAssertEqual(usage, expectedUsage)
         XCTAssertFalse(verificationContext.hasChanges)
     }
 
@@ -253,10 +257,14 @@ final class FieldnotePersistenceTests: XCTestCase {
             predicate: #Predicate { $0.id == id }
         )
         let usage = try FieldnotesArchiveUsageRepository.current(in: verificationContext)
+        let retainedFieldnote = try XCTUnwrap(verificationContext.fetch(descriptor).only)
+        let expectedUsage = try FieldnotesArchiveCodec.measure(
+            FieldnotesArchiveRecord(fieldnote: retainedFieldnote),
+            addingTo: .empty
+        )
 
         XCTAssertEqual(try verificationContext.fetchCount(descriptor), 1)
-        XCTAssertEqual(usage.fieldnoteCount, 1)
-        XCTAssertEqual(usage.totalPhotoBytes, 3)
+        XCTAssertEqual(usage, expectedUsage)
     }
 
     private func measureSaveCost(

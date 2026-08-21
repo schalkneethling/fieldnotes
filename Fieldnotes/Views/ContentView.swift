@@ -218,6 +218,8 @@ struct ReviewView: View {
                 withAnimation {
                     _ = deletedEntryIDs.insert(id)
                 }
+            } catch let error as FieldnoteDeletionError {
+                deletionErrorMessage = error.localizedDescription
             } catch {
                 deletionErrorMessage = "Nothing was deleted. Check available storage and try again."
             }

@@ -185,6 +185,7 @@ final class FieldnoteDomainTests: XCTestCase {
         let staleRequestID = photoSelection.beginLibraryLoad()
         photoSelection.selectCameraPhoto(replacementData)
         photoSelection.finishLibraryLoad(with: staleData, requestID: staleRequestID)
+        photoSelection.failLibraryLoad(requestID: staleRequestID)
 
         XCTAssertEqual(photoSelection.data, replacementData)
         XCTAssertTrue(photoSelection.isReady)

@@ -161,6 +161,7 @@ struct ReviewView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .disabled(isDeleting)
                 }
             }
         }

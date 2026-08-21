@@ -98,3 +98,13 @@ Statuses:
 - **Future configuration:** Storage-quality presets should be available to every user because larger photos consume the user’s own device and archive storage; they are not a subscription entitlement.
 - **Reason:** A bounded stored representation keeps capture, retrieval, export, scrolling, and memory costs predictable without retaining unnecessarily large originals inside a lightweight Fieldnote.
 - **Tracking:** GitHub issues #7 and #28.
+
+## D-012 — Use stacked pull requests for dependent changes
+
+- **Date:** 2026-08-09
+- **Status:** Accepted
+- **Decision:** Split substantial dependent work into a chain of focused pull requests when each layer can be reviewed independently. The bottom pull request targets `main`; every higher pull request targets the branch directly below it. Use GitHub's native stacked-pull-request support and the `gh stack` CLI workflow when available.
+- **Review and update rule:** Each change belongs to the lowest layer that needs it. Apply review fixes on that branch, then cascade the update through every branch above it. Describe the full bottom-to-top order and the current pull request's position in every pull-request body.
+- **Merge rule:** Merge from the bottom upward. Do not merge a higher layer while a lower dependency remains unresolved; let GitHub rebase and retarget the remaining stack after lower layers merge.
+- **Reason:** A stack keeps dependent reliability work moving while preserving small diffs, explicit dependencies, isolated review, and meaningful validation at every layer.
+- **Guidance:** See `plans/stacked-pull-requests.md`.

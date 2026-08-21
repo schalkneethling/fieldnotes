@@ -123,9 +123,17 @@ struct ReviewView: View {
     let entries: [Fieldnote]
     @Binding var selectedRange: EntryRange
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var pendingDeletionID: UUID?
+    @State private var deletedEntryIDs: Set<UUID> = []
+    @State private var deletionErrorMessage: String?
+    @State private var isDeleting = false
 
     private var visibleEntries: [Fieldnote] {
-        entries.filter { selectedRange.contains($0.createdAt) }
+        entries.filter {
+            selectedRange.contains($0.createdAt) && !deletedEntryIDs.contains($0.id)
+        }
     }
 
     var body: some View {
@@ -140,7 +148,10 @@ struct ReviewView: View {
                 }
 
                 Section("Field Log") {
-                    FieldnoteTimelineView(entries: visibleEntries)
+                    FieldnoteTimelineView(entries: visibleEntries) { entry in
+                        pendingDeletionID = entry.id
+                    }
+                    .disabled(isDeleting)
                 }
             }
             .navigationTitle("Review")
@@ -150,7 +161,39 @@ struct ReviewView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .disabled(isDeleting)
                 }
+            }
+        }
+        .alert(
+            "Delete this Fieldnote?",
+            isPresented: Binding(
+                get: { pendingDeletionID != nil },
+                set: { if !$0 { pendingDeletionID = nil } }
+            )
+        ) {
+            Button("Delete", role: .destructive) {
+                deletePendingFieldnote()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDeletionID = nil
+            }
+        } message: {
+            Text("This removes the Fieldnote and its attached photo from this device. This can’t be undone.")
+        }
+        .alert(
+            "Fieldnote wasn’t deleted",
+            isPresented: Binding(
+                get: { deletionErrorMessage != nil },
+                set: { if !$0 { deletionErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                deletionErrorMessage = nil
+            }
+        } message: {
+            if let deletionErrorMessage {
+                Text(deletionErrorMessage)
             }
         }
     }
@@ -163,10 +206,40 @@ struct ReviewView: View {
         }
         .pickerStyle(.segmented)
     }
+
+    private func deletePendingFieldnote() {
+        guard let id = pendingDeletionID else { return }
+        pendingDeletionID = nil
+        isDeleting = true
+
+        Task { @MainActor in
+            do {
+                let store = FieldnoteDeletionStore(modelContainer: modelContext.container)
+                try await store.delete(id: id)
+                withAnimation {
+                    _ = deletedEntryIDs.insert(id)
+                }
+            } catch let error as FieldnoteDeletionError {
+                deletionErrorMessage = error.localizedDescription
+            } catch {
+                deletionErrorMessage = "Nothing was deleted. Check available storage and try again."
+            }
+            isDeleting = false
+        }
+    }
 }
 
 struct FieldnoteTimelineView: View {
     let entries: [Fieldnote]
+    var deleteAction: ((Fieldnote) -> Void)?
+
+    init(
+        entries: [Fieldnote],
+        deleteAction: ((Fieldnote) -> Void)? = nil
+    ) {
+        self.entries = entries
+        self.deleteAction = deleteAction
+    }
 
     var body: some View {
         if entries.isEmpty {
@@ -174,6 +247,15 @@ struct FieldnoteTimelineView: View {
         } else {
             ForEach(entries) { entry in
                 EntryCardView(entry: entry)
+                    .swipeActions(edge: .trailing) {
+                        if let deleteAction {
+                            Button(role: .destructive) {
+                                deleteAction(entry)
+                            } label: {
+                                Label("Delete Fieldnote", systemImage: "trash")
+                            }
+                        }
+                    }
             }
         }
     }

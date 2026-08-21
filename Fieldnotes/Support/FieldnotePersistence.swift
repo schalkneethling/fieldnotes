@@ -1,6 +1,17 @@
 import Foundation
 import SwiftData
 
+enum FieldnoteRetrieval {
+    static func newestFirstDescriptor() -> FetchDescriptor<Fieldnote> {
+        FetchDescriptor(
+            sortBy: [
+                SortDescriptor(\Fieldnote.createdAt, order: .reverse),
+                SortDescriptor(\Fieldnote.id)
+            ]
+        )
+    }
+}
+
 protocol FieldnotePersistenceRepository {
     func persist(
         _ record: FieldnotesArchiveRecord,
@@ -63,16 +74,21 @@ actor FieldnotePersistenceStore {
 }
 
 struct SwiftDataFieldnotePersistenceRepository: FieldnotePersistenceRepository {
+    typealias ContextSaver = (ModelContext) throws -> Void
+
     let context: ModelContext
     let usageAccess: any FieldnotesArchiveUsageAccess
+    let save: ContextSaver
 
     init(
         context: ModelContext,
-        usageAccess: (any FieldnotesArchiveUsageAccess)? = nil
+        usageAccess: (any FieldnotesArchiveUsageAccess)? = nil,
+        save: @escaping ContextSaver = { try $0.save() }
     ) {
         self.context = context
         self.usageAccess = usageAccess
             ?? SwiftDataFieldnotesArchiveUsageAccess(context: context)
+        self.save = save
     }
 
     func persist(
@@ -91,7 +107,7 @@ struct SwiftDataFieldnotePersistenceRepository: FieldnotePersistenceRepository {
                     using: usageAccess
                 )
                 if context.hasChanges {
-                    try context.save()
+                    try save(context)
                 }
             } catch {
                 context.rollback()

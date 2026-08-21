@@ -37,7 +37,7 @@ enum EntryRange: String, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
-    @Query(sort: \Fieldnote.createdAt, order: .reverse) private var entries: [Fieldnote]
+    @Query(FieldnoteRetrieval.newestFirstDescriptor()) private var entries: [Fieldnote]
 
     @State private var selectedRange = EntryRange.day
     @State private var isShowingEditor = false
